@@ -39,8 +39,9 @@ Um sensor HC-SR04 por vaga conectado ao ESP32. Se detectar objeto a menos de 20 
 
 ## 🎬 Vídeo de demonstração
 
-> 📹 *Em breve — link do YouTube será adicionado aqui*
+[![YouTube](https://img.shields.io/badge/Vídeo-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/-ANPHwUVjhA)
 
+🔗 **Vídeo:** [youtu.be/-ANPHwUVjhA](https://youtu.be/-ANPHwUVjhA)  
 🔗 **Simulação ao vivo:** [wokwi.com/projects/465089138268468225](https://wokwi.com/projects/465089138268468225)
 
 ---
@@ -278,13 +279,15 @@ O dashboard recebe dados via MQTT e exibe o estado das vagas em tempo real.
 
 ---
 
-## 👥 Créditos
+## 👥 Grupo 1
 
-| Função | Integrante |
-|--------|-----------|
-| Firmware MicroPython, Arquitetura & Slides | [Enzo Bossmann](https://github.com/Bossmann007) |
-| Dashboard Processing & Simulação Wokwi | [Gabriel Henrique](https://github.com/gabrielhenrizz) |
-| Firmware MicroPython & Relatório | [Diego Feltrin](https://github.com/DiegoFeltrin) |
+| Integrante |
+|-----------|
+| Enzo Bossmann |
+| Gabriel Henrique |
+| Diego Feltrin |
+| Daniel Luiz |
+| Luis Henrique |
 
 ---
 
