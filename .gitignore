@@ -1,0 +1,29 @@
+# Obsidian vault internals
+.obsidian/
+desktop.ini
+
+# Notas pessoais (não fazem parte do repo do projeto)
+Guia — *.md
+Inspiracoes.md
+linkedin-youtube.md
+Simulação Wokwi - *.md
+SmartCity-ObjetivoGeral.md
+slides-roteiro.md
+diagrama-cps.excalidraw
+
+# Exemplo do professor
+AS04 - Projeto Smart City*.pdf
+
+# Screenshots aleatórias
+Screenshot_*.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Notas de sessao/checkup do vault (pessoais)
+2026-* — Sess*.md
+Checkup de Codigo*.md
+
+# Pasta de base do Wokwi (arquivos oficiais ficam na raiz)
+Wokiwbase/

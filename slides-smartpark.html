@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartPark PUC — Apresentação</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .deck { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .slide.active { display: flex; opacity: 1; transform: translateY(0); }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 6px;
+    background: linear-gradient(180deg, #58a6ff, #3fb950);
+  }
+
+  .slide-number {
+    position: absolute;
+    bottom: 24px;
+    right: 32px;
+    font-size: 13px;
+    color: #8b949e;
+    letter-spacing: 1px;
+  }
+
+  .tag {
+    display: inline-block;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    color: #58a6ff;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+
+  h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; line-height: 1.15; color: #f0f6fc; margin-bottom: 12px; }
+  h2 { font-size: clamp(1.4rem, 3.5vw, 2.2rem); font-weight: 600; color: #f0f6fc; margin-bottom: 28px; line-height: 1.2; }
+  .subtitle { font-size: clamp(1rem, 2vw, 1.3rem); color: #8b949e; margin-top: 8px; }
+
+  ul { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+  ul li { display: flex; align-items: flex-start; gap: 12px; font-size: clamp(0.95rem, 1.8vw, 1.15rem); color: #c9d1d9; line-height: 1.5; }
+  ul li::before { content: '▶'; color: #58a6ff; font-size: 0.7em; margin-top: 5px; flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.85rem, 1.5vw, 1rem); }
+  th { background: #161b22; color: #58a6ff; padding: 12px 16px; text-align: left; border-bottom: 2px solid #30363d; font-weight: 600; }
+  td { padding: 12px 16px; border-bottom: 1px solid #21262d; color: #c9d1d9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 600; color: #3fb950; }
+  td:nth-child(2) { color: #58a6ff; }
+
+  pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 20px 24px; font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: clamp(0.78rem, 1.3vw, 0.92rem); line-height: 1.65; color: #c9d1d9;
+    overflow-x: auto; margin-bottom: 20px;
+  }
+  .kw { color: #ff7b72; } .fn { color: #d2a8ff; } .cm { color: #8b949e; font-style: italic; }
+  .st { color: #a5d6ff; } .nm { color: #79c0ff; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  .boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 8px; }
+  .box { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px 24px; }
+  .box .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: #58a6ff; margin-bottom: 6px; }
+  .box .value { font-size: clamp(1rem, 2vw, 1.2rem); color: #f0f6fc; font-weight: 600; }
+
+  .diagram {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 20px 24px; font-family: Consolas, monospace; font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+    color: #c9d1d9; line-height: 1.7; white-space: pre;
+  }
+
+  .roadmap { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+  .step { display: flex; align-items: center; gap: 16px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px 20px; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; background: #58a6ff; color: #0d1117; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-text { font-size: clamp(0.9rem, 1.6vw, 1.05rem); color: #c9d1d9; }
+
+  /* Dashboard gallery */
+  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .gallery figure { margin: 0; cursor: zoom-in; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; background: #161b22; transition: transform 0.2s, border-color 0.2s; }
+  .gallery figure:hover { transform: translateY(-3px); border-color: #58a6ff; }
+  .gallery img { width: 100%; display: block; aspect-ratio: 16/10; object-fit: contain; background: #0d1117; }
+  .gallery figcaption { font-size: 0.78rem; color: #8b949e; padding: 6px 10px; text-align: center; }
+
+  /* Diagrama CPS interativo (nativo SVG) */
+  .cps-stage { display: grid; grid-template-columns: 1.55fr 1fr; gap: 28px; align-items: center; }
+  .cps-svg { width: 100%; height: auto; }
+  .cps-svg .layer { cursor: pointer; transition: opacity 0.2s; }
+  .cps-svg .layer .lbox { transition: transform 0.15s, filter 0.2s; transform-box: fill-box; transform-origin: center; }
+  .cps-svg.dim .layer:not(.hot) { opacity: 0.32; }
+  .cps-svg .layer.hot .lbox { filter: brightness(1.18); transform: scale(1.03); }
+  .cps-panel { background: #161b22; border: 1px solid #30363d; border-left: 4px solid #58a6ff; border-radius: 10px; padding: 22px 24px; min-height: 180px; transition: border-color 0.2s; }
+  .cps-panel .cp-tag { font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color: #58a6ff; font-weight: 700; }
+  .cps-panel .cp-title { font-size: 1.25rem; color: #f0f6fc; font-weight: 700; margin: 6px 0 12px; }
+  .cps-panel .cp-desc { font-size: 0.98rem; color: #c9d1d9; line-height: 1.55; }
+  .cps-hint { text-align: center; color: #8b949e; font-size: 0.85rem; margin-top: 14px; }
+
+  /* Lightbox */
+  .lightbox { position: fixed; inset: 0; background: rgba(1,4,9,0.92); display: none; align-items: center; justify-content: center; z-index: 300; cursor: zoom-out; padding: 40px; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 92vw; max-height: 88vh; border-radius: 10px; border: 1px solid #30363d; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+
+  /* Interactive demo */
+  .demo-wrap { display: flex; gap: 28px; justify-content: center; align-items: stretch; margin-top: 4px; }
+  .vaga {
+    flex: 1; max-width: 280px; background: #161b22; border: 2px solid #3fb950;
+    border-radius: 14px; padding: 26px 20px; text-align: center; cursor: pointer;
+    transition: border-color 0.25s, background 0.25s, transform 0.1s; user-select: none;
+  }
+  .vaga:hover { transform: translateY(-3px); }
+  .vaga:active { transform: translateY(0); }
+  .vaga .car { font-size: 3.2rem; line-height: 1; height: 56px; opacity: 0; transition: opacity 0.25s; }
+  .vaga.occupied { border-color: #ff7b72; background: #2a1416; }
+  .vaga.occupied .car { opacity: 1; }
+  .vaga .vlabel { font-size: 1.1rem; font-weight: 600; color: #f0f6fc; margin: 14px 0 10px; }
+  .led-dot { width: 26px; height: 26px; border-radius: 50%; margin: 0 auto 8px; background: #3fb950; box-shadow: 0 0 16px #3fb95088; transition: background 0.25s, box-shadow 0.25s; }
+  .vaga.occupied .led-dot { background: #ff7b72; box-shadow: 0 0 16px #ff7b7288; }
+  .vaga .status { font-size: 0.95rem; color: #3fb950; font-weight: 600; }
+  .vaga.occupied .status { color: #ff7b72; }
+  .demo-hint { text-align: center; color: #8b949e; font-size: 0.9rem; margin-top: 22px; }
+  .buzzer-status {
+    margin: 24px auto 0; max-width: 360px; text-align: center; padding: 14px 20px;
+    border-radius: 10px; border: 1px solid #30363d; background: #161b22;
+    font-weight: 600; color: #8b949e; transition: all 0.25s;
+  }
+  .buzzer-status.lotado { background: #2a1416; border-color: #ff7b72; color: #ff7b72; animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 #ff7b7255; } 50% { box-shadow: 0 0 0 10px #ff7b7200; } }
+
+  /* Botão e modal do Wokwi */
+  .wokwi-btn { background: linear-gradient(135deg, #58a6ff, #3fb950); color: #0d1117; border: none; font-weight: 700; font-size: 1rem; padding: 12px 22px; border-radius: 10px; cursor: pointer; transition: transform 0.12s, box-shadow 0.2s; }
+  .wokwi-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(88,166,255,0.3); }
+  .wokwi-link { color: #8b949e; font-size: 0.9rem; text-decoration: none; }
+  .wokwi-link:hover { color: #58a6ff; }
+
+  .wokwi-modal { position: fixed; inset: 0; background: rgba(1,4,9,0.94); display: none; z-index: 300; padding: 32px; }
+  .wokwi-modal.open { display: flex; }
+  .wokwi-frame-wrap { margin: auto; width: min(1100px, 95vw); height: min(720px, 90vh); background: #161b22; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .wokwi-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #0d1117; border-bottom: 1px solid #30363d; font-size: 0.9rem; color: #c9d1d9; }
+  .wokwi-bar .wk-open { color: #58a6ff; text-decoration: none; font-weight: 600; margin-right: 14px; }
+  .wokwi-bar .wk-close { background: none; border: none; color: #8b949e; font-size: 1.1rem; cursor: pointer; }
+  .wokwi-bar .wk-close:hover { color: #f0f6fc; }
+  .wokwi-body { position: relative; flex: 1; }
+  .wokwi-body .wokwi-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 40px; color: #8b949e; font-size: 1rem; line-height: 1.6; }
+  .wokwi-body iframe { position: relative; width: 100%; height: 100%; border: none; background: transparent; }
+
+  /* Dashboard SmartPark recriado (tema claro, igual ao Processing) */
+  .dash-app { background: #EAF2EC; border-radius: 14px; padding: 16px; color: #18241E; display: grid; grid-template-columns: 1.7fr 1fr; gap: 14px; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .dash-status { grid-column: 1 / -1; display: flex; align-items: center; gap: 9px; color: #55645B; font-size: 0.8rem; }
+  .dash-status .sdot { width: 11px; height: 11px; border-radius: 50%; background: #EFAE1E; box-shadow: 0 0 8px #EFAE1E; }
+  .dash-card { background: #fff; border: 1px solid #E5ECE7; border-radius: 12px; padding: 14px 16px; border-top: 4px solid #2C7FD2; }
+  .dash-card.green { border-top-color: #1E875A; }
+  .dash-card h4 { text-align: center; color: #2C7FD2; font-size: 1rem; margin-bottom: 12px; }
+  .dash-card.green h4 { color: #1E875A; }
+  .dvagas { display: flex; gap: 14px; justify-content: center; }
+  .dvaga { flex: 1; max-width: 220px; border: 2.4px solid #1E875A; background: #EAF6EF; border-radius: 12px; padding: 14px; text-align: center; cursor: pointer; position: relative; transition: transform 0.1s; }
+  .dvaga:hover { transform: translateY(-2px); }
+  .dvaga.occ { border-color: #E0564E; background: #FBEAE9; }
+  .dvaga .dled { position: absolute; top: 12px; right: 12px; width: 18px; height: 18px; border-radius: 50%; background: #2FAE78; box-shadow: 0 0 12px #2FAE78; }
+  .dvaga.occ .dled { background: #E0564E; box-shadow: 0 0 12px #E0564E; animation: pulse 0.8s infinite; }
+  .dvaga .dtit { font-weight: 700; color: #18241E; font-size: 0.95rem; }
+  .dvaga .dcar { font-size: 2.4rem; height: 46px; line-height: 46px; }
+  .dvaga .dstat { font-weight: 700; font-size: 1.05rem; color: #1E875A; }
+  .dvaga.occ .dstat { color: #E0564E; }
+  .dash-legend { display: flex; gap: 18px; justify-content: center; margin-top: 12px; font-size: 0.78rem; color: #55645B; }
+  .dash-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dash-legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+  .dash-co2 { margin-top: 12px; background: #EAF6EF; border-radius: 8px; padding: 9px 12px; text-align: center; color: #1E875A; font-size: 0.78rem; }
+  .dstatcard { background: #fff; border: 1px solid #E5ECE7; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+  .dstatcard .dl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: #55645B; }
+  .dstatcard .dv { font-size: 1.5rem; font-weight: 700; }
+  .dash-hint { text-align: center; color: #8b949e; font-size: 0.85rem; margin-top: 14px; }
+
+  /* Top progress bar */
+  .pbar { position: fixed; top: 0; left: 0; height: 3px; width: 100%; background: #21262d; z-index: 120; }
+  .pbar-fill { height: 100%; width: 0; background: linear-gradient(90deg, #58a6ff, #3fb950); transition: width 0.35s ease; }
+
+  /* Cover */
+  .cover { text-align: center; align-items: center; }
+  .cover::before { display: none; }
+  .cover-badge { background: linear-gradient(135deg, #58a6ff20, #3fb95020); border: 1px solid #58a6ff40; border-radius: 12px; padding: 6px 18px; font-size: 0.85rem; color: #58a6ff; margin-bottom: 28px; }
+  .cover h1 { font-size: clamp(2.5rem, 6vw, 4rem); background: linear-gradient(135deg, #58a6ff, #3fb950); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 16px; }
+  .cover-meta { margin-top: 40px; color: #8b949e; font-size: 0.9rem; line-height: 2; }
+  .cover-meta strong { color: #c9d1d9; }
+
+  .green { color: #3fb950; } .blue { color: #58a6ff; } .red { color: #ff7b72; }
+  strong { color: #f0f6fc; }
+
+  /* Nav controls */
+  .nav { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: #161b22; border: 1px solid #30363d; border-radius: 30px; padding: 8px 18px; z-index: 100; }
+  .nav button { background: none; border: none; color: #8b949e; font-size: 1.1rem; cursor: pointer; padding: 4px 10px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .nav button:hover { color: #f0f6fc; background: #21262d; }
+  .nav .progress { font-size: 0.85rem; color: #8b949e; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 7px; align-items: center; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #30363d; border: none; padding: 0; cursor: pointer; transition: background 0.2s, transform 0.2s; }
+  .dot:hover { background: #58a6ff88; }
+  .dot.active { background: #58a6ff; transform: scale(1.35); }
+
+  /* Overview grid */
+  .overview { position: fixed; inset: 0; background: rgba(1,4,9,0.96); display: none; z-index: 250; padding: 48px; overflow-y: auto; }
+  .overview.open { display: block; }
+  .overview h3 { color: #8b949e; font-weight: 500; margin-bottom: 24px; text-align: center; font-size: 1rem; }
+  .ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; max-width: 1100px; margin: 0 auto; }
+  .ov-card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 18px; cursor: pointer; min-height: 110px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s, transform 0.15s; }
+  .ov-card:hover { border-color: #58a6ff; transform: translateY(-3px); }
+  .ov-card .ov-num { font-size: 0.75rem; color: #58a6ff; font-weight: 700; }
+  .ov-card .ov-title { font-size: 0.95rem; color: #f0f6fc; line-height: 1.3; }
+
+  @media print { .nav, .pbar, .overview, .lightbox { display: none !important; } .slide { page-break-after: always; } }
+</style>
+</head>
+<body>
+
+<div class="pbar"><div class="pbar-fill" id="pbarFill"></div></div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 — Capa -->
+  <div class="slide cover active" data-title="Capa">
+    <div class="cover-badge">Fundamentos de Sistemas Ciberfísicos · PUCPR 2026.1</div>
+    <h1>SmartPark PUC</h1>
+    <p class="subtitle">Monitoramento inteligente de vagas de estacionamento</p>
+    <div class="cover-meta">
+      <strong>Grupo 1 — Enzo Bossmann · Gabriel Henrique · Diego Feltrin · Daniel Luiz · Luis Henrique</strong><br>
+      ESP32 · MicroPython · MQTT · Processing · Wokwi · HC-SR04
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 2 — Problema -->
+  <div class="slide" data-title="O Problema">
+    <div class="tag">O Problema</div>
+    <h2>Quem nunca ficou rodando no estacionamento da PUC?</h2>
+    <ul>
+      <li>Os totens da entrada só mostram <strong>"lotado" ou "disponível"</strong> — não onde tem vaga</li>
+      <li>Motorista entra, percorre o corredor todo, não tem nada — tem que voltar</li>
+      <li>Motor ligado o tempo todo = <strong class="red">CO₂ desnecessário</strong></li>
+      <li>Até <strong>30% do tráfego urbano</strong> é causado por busca de estacionamento — gerando <strong>18,6 bilhões de libras de CO₂/ano</strong> só nos EUA <span style="font-size:0.8em;color:#8b949e">(UCLA/Parksmart, 2017)</span></li>
+      <li><strong class="red">Curitiba é a cidade brasileira onde mais se perde tempo no trânsito</strong> — 135 horas/ano por motorista <span style="font-size:0.8em;color:#8b949e">(TomTom Traffic Index 2025, Gazeta do Povo, 13/05/2026)</span></li>
+      <li><strong class="green">A URBS já opera SmartParks em Curitiba</strong> — 197,8 mil ativações em 2024, crescimento de 20% — o problema é real e a solução também <span style="font-size:0.8em;color:#8b949e">(XV Curitiba, jul/2025)</span></li>
+    </ul>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 2.5 — Fotos reais do estacionamento PUC -->
+  <div class="slide" data-title="O Estacionamento da PUC">
+    <div class="tag">Contexto Real</div>
+    <h2>O problema que a gente vê todo dia aqui na PUC</h2>
+    <div class="gallery" style="grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <figure onclick="openLightbox('imgs/puc-totem-vagas.jpg')" style="position:relative">
+        <img src="imgs/puc-totem-vagas.jpg" alt="Totem PUCPR E03 — 4 VAGAS" style="height:320px;width:100%;object-fit:cover">
+        <figcaption style="background:#1c1c1c;color:#ff7b72;font-weight:700">Totem E03 — diz "4 VAGAS" mas não diz <em>onde</em></figcaption>
+      </figure>
+      <figure onclick="openLightbox('imgs/puc-portao02.jpg')">
+        <img src="imgs/puc-portao02.jpg" alt="Portão 02 PUCPR" style="height:320px;width:100%;object-fit:cover">
+        <figcaption>Portão 02 — entrada sem informação de vaga disponível</figcaption>
+      </figure>
+      <figure onclick="openLightbox('imgs/puc-aerea.jpg')">
+        <img src="imgs/puc-aerea.jpg" alt="Vista aérea estacionamento PUC" style="height:200px;width:100%;object-fit:cover">
+        <figcaption>Vista aérea — corredores sem sinalização por vaga</figcaption>
+      </figure>
+      <figure onclick="openLightbox('imgs/puc-estac-lotado.jpg')">
+        <img src="imgs/puc-estac-lotado.jpg" alt="Estacionamento lotado PUC" style="height:200px;width:100%;object-fit:cover">
+        <figcaption>Hora do rush — motorista percorre tudo sem saber se tem vaga</figcaption>
+      </figure>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 3 — Solução -->
+  <div class="slide" data-title="A Solução">
+    <div class="tag">A Solução</div>
+    <h2>Um sensor por vaga. Um LED. Resolvido.</h2>
+    <div class="cols">
+      <ul>
+        <li>Sensor ultrassônico em cada vaga detecta se tem carro</li>
+        <li><strong class="green">LED verde</strong> = livre · <strong class="red">LED vermelho</strong> = ocupada</li>
+        <li>Buzzer avisa quando o estacionamento está lotado</li>
+        <li>Dados em tempo real via <strong>MQTT</strong> pro dashboard Processing</li>
+      </ul>
+      <div class="diagram">HC-SR04 (vaga 1 e 2)
+    ↓ GPIO 5/18 · 19/21
+ESP32 DevKit V1
+    ↓ GPIO 2/4/22/23
+4× LED (verde + vermelho)
+    ↓ GPIO 25
+  Buzzer — estac. lotado
+    ↓ WiFi / MQTT
+  Dashboard Processing</div>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 4 — Arquitetura CPS -->
+  <div class="slide" data-title="Arquitetura CPS">
+    <div class="tag">Arquitetura CPS</div>
+    <h2>As quatro camadas do sistema ciberfísico</h2>
+    <table>
+      <thead>
+        <tr><th>Camada</th><th>Componente</th><th>O que faz</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Sensing</td><td>HC-SR04</td><td>Mede distância até o carro (mundo físico → digital)</td></tr>
+        <tr><td>Computation</td><td>ESP32 + MicroPython</td><td>Decide se a vaga está ocupada (dist &lt; 20 cm)</td></tr>
+        <tr><td>Communication</td><td>WiFi + MQTT</td><td>Envia o estado das vagas pro dashboard em tempo real</td></tr>
+        <tr><td>Actuation</td><td>LED + Buzzer + Dashboard</td><td>Sinaliza visualmente, sonoramente e na tela (digital → físico)</td></tr>
+      </tbody>
+    </table>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 4.5 — Diagrama Funcional CPS (interativo) -->
+  <div class="slide" data-title="Diagrama Funcional CPS">
+    <div class="tag">Diagrama Funcional</div>
+    <h2>O fluxo do sistema — passe o mouse nas camadas</h2>
+    <div class="cps-stage">
+      <svg class="cps-svg" id="cpsSvg" viewBox="0 0 740 540" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#8b949e"></path>
+          </marker>
+        </defs>
+        <!-- setas -->
+        <g stroke="#8b949e" stroke-width="2" fill="none" marker-end="url(#arr)">
+          <line x1="190" y1="118" x2="330" y2="150"></line>
+          <line x1="550" y1="118" x2="410" y2="150"></line>
+          <line x1="220" y1="232" x2="180" y2="298"></line>
+          <line x1="520" y1="232" x2="560" y2="298"></line>
+        </g>
+
+        <!-- SENSING -->
+        <g class="layer" data-tag="Sensing" data-title="Aquisição de dados"
+           data-desc="Dois sensores ultrassônicos HC-SR04 medem a distância até o carro e transformam o mundo físico em dados digitais (cm).">
+          <rect class="lbox" x="20" y="15" width="700" height="100" rx="12" fill="#58a6ff" fill-opacity="0.10" stroke="#58a6ff"></rect>
+          <text x="34" y="36" fill="#58a6ff" font-size="13" font-weight="700" font-family="sans-serif">SENSING</text>
+          <rect x="70" y="46" width="260" height="56" rx="8" fill="#0d1117" stroke="#30363d"></rect>
+          <text x="200" y="70" text-anchor="middle" fill="#e6edf3" font-size="14" font-family="sans-serif">HC-SR04 · Vaga 1</text>
+          <text x="200" y="90" text-anchor="middle" fill="#8b949e" font-size="12" font-family="sans-serif">GPIO 5 / 18</text>
+          <rect x="410" y="46" width="260" height="56" rx="8" fill="#0d1117" stroke="#30363d"></rect>
+          <text x="540" y="70" text-anchor="middle" fill="#e6edf3" font-size="14" font-family="sans-serif">HC-SR04 · Vaga 2</text>
+          <text x="540" y="90" text-anchor="middle" fill="#8b949e" font-size="12" font-family="sans-serif">GPIO 19 / 21</text>
+        </g>
+
+        <!-- COMPUTATION -->
+        <g class="layer" data-tag="Computation" data-title="Processamento no ESP32"
+           data-desc="O ESP32 roda o firmware MicroPython: lê a distância e decide se a vaga está ocupada (dist < 20 cm) ou livre.">
+          <rect class="lbox" x="20" y="150" width="700" height="80" rx="12" fill="#a371f7" fill-opacity="0.12" stroke="#a371f7"></rect>
+          <text x="34" y="170" fill="#a371f7" font-size="13" font-weight="700" font-family="sans-serif">COMPUTATION</text>
+          <rect x="70" y="176" width="600" height="46" rx="8" fill="#0d1117" stroke="#30363d"></rect>
+          <text x="370" y="195" text-anchor="middle" fill="#e6edf3" font-size="13.5" font-family="sans-serif">ESP32 DevKit V1 · MicroPython · main.py</text>
+          <text x="370" y="213" text-anchor="middle" fill="#8b949e" font-size="12" font-family="sans-serif">dist &lt; 20 cm → OCUPADA   |   ≥ 20 cm → LIVRE</text>
+        </g>
+
+        <!-- ACTUATION -->
+        <g class="layer" data-tag="Actuation" data-title="Atuação (digital → físico)"
+           data-desc="Dois atuadores: os LEDs sinalizam visualmente (verde/vermelho) e o buzzer apita quando as duas vagas estão ocupadas.">
+          <rect class="lbox" x="20" y="300" width="340" height="220" rx="12" fill="#3fb950" fill-opacity="0.10" stroke="#3fb950"></rect>
+          <text x="34" y="320" fill="#3fb950" font-size="13" font-weight="700" font-family="sans-serif">ACTUATION</text>
+          <rect x="45" y="332" width="290" height="68" rx="8" fill="#0d1117" stroke="#30363d"></rect>
+          <text x="190" y="360" text-anchor="middle" fill="#e6edf3" font-size="13.5" font-family="sans-serif">4× LED (verde · vermelho)</text>
+          <text x="190" y="380" text-anchor="middle" fill="#8b949e" font-size="12" font-family="sans-serif">GPIO 2, 4, 22, 23 · 220Ω</text>
+          <rect x="45" y="416" width="290" height="68" rx="8" fill="#0d1117" stroke="#30363d"></rect>
+          <text x="190" y="444" text-anchor="middle" fill="#e6edf3" font-size="13.5" font-family="sans-serif">Buzzer Passivo · PWM 1 kHz</text>
+          <text x="190" y="464" text-anchor="middle" fill="#8b949e" font-size="12" font-family="sans-serif">GPIO 25 · duty 50% · lotado</text>
+        </g>
+
+        <!-- COMMUNICATION -->
+        <g class="layer" data-tag="Communication" data-title="Comunicação via MQTT"
+           data-desc="O ESP32 publica o estado das vagas em JSON no tópico smartpark/vagas via WiFi + MQTT — só quando o estado muda.">
+          <rect class="lbox" x="380" y="300" width="340" height="220" rx="12" fill="#d29922" fill-opacity="0.10" stroke="#d29922"></rect>
+          <text x="394" y="320" fill="#d29922" font-size="13" font-weight="700" font-family="sans-serif">COMMUNICATION</text>
+          <rect x="405" y="345" width="290" height="68" rx="8" fill="#0d1117" stroke="#30363d"></rect>
+          <text x="550" y="373" text-anchor="middle" fill="#e6edf3" font-size="13.5" font-family="sans-serif">WiFi + MQTT v3.1.1</text>
+          <text x="550" y="393" text-anchor="middle" fill="#8b949e" font-size="12" font-family="sans-serif">tópico: smartpark/vagas</text>
+          <text x="550" y="445" text-anchor="middle" fill="#8b949e" font-size="11.5" font-family="monospace">{ "vaga1": {"ocupada": true}, ... }</text>
+        </g>
+      </svg>
+
+      <div class="cps-panel" id="cpsPanel">
+        <div class="cp-tag" id="cpTag">Sistema Ciberfísico</div>
+        <div class="cp-title" id="cpTitle">As 4 camadas do SmartPark</div>
+        <div class="cp-desc" id="cpDesc">Passe o mouse (ou toque) em cada camada do diagrama para ver o que ela faz no fluxo do sistema.</div>
+      </div>
+    </div>
+    <div class="cps-hint">Sensing → Computation → Actuation + Communication — o ciclo completo de um CPS.</div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 5 — Código -->
+  <div class="slide" data-title="Firmware MicroPython">
+    <div class="tag">MicroPython no ESP32</div>
+    <h2>Firmware — funções, laços e condicionais</h2>
+    <div class="cols">
+      <pre><span class="cm"># LEDs e buzzer (pinos nomeados)</span>
+<span class="nm">LED_V1</span> = <span class="fn">Pin</span>(<span class="nm">2</span>, Pin.OUT);  <span class="nm">LED_R1</span> = <span class="fn">Pin</span>(<span class="nm">4</span>, Pin.OUT)
+<span class="nm">buzzer</span> = <span class="fn">PWM</span>(<span class="fn">Pin</span>(<span class="nm">25</span>)); <span class="nm">buzzer</span>.<span class="fn">freq</span>(<span class="nm">1000</span>); <span class="nm">buzzer</span>.<span class="fn">duty</span>(<span class="nm">0</span>)
+
+<span class="kw">def</span> <span class="fn">atualizar_led</span>(ocupada, verde, vermelho):
+    <span class="kw">if</span> ocupada: verde.<span class="fn">off</span>(); vermelho.<span class="fn">on</span>()
+    <span class="kw">else</span>:       verde.<span class="fn">on</span>();  vermelho.<span class="fn">off</span>()
+
+<span class="kw">def</span> <span class="fn">apitar</span>():                 <span class="cm"># beep de 1 segundo</span>
+    <span class="nm">buzzer</span>.<span class="fn">duty</span>(<span class="nm">512</span>); <span class="fn">sleep</span>(<span class="nm">1</span>); <span class="nm">buzzer</span>.<span class="fn">duty</span>(<span class="nm">0</span>)
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    <span class="nm">d1</span> = <span class="fn">medir_distancia</span>(<span class="nm">TRIG1</span>, <span class="nm">ECHO1</span>)
+    <span class="nm">ocup1</span> = <span class="nm">d1</span> &lt; <span class="nm">LIMIAR_CM</span>
+    <span class="fn">atualizar_led</span>(<span class="nm">ocup1</span>, <span class="nm">LED_V1</span>, <span class="nm">LED_R1</span>)
+
+    <span class="nm">lotado</span> = <span class="nm">ocup1</span> <span class="kw">and</span> <span class="nm">ocup2</span>
+    <span class="kw">if</span> <span class="nm">lotado</span> <span class="kw">and</span> <span class="kw">not</span> <span class="nm">lotado_ant</span>:
+        <span class="fn">apitar</span>()
+    <span class="nm">lotado_ant</span> = <span class="nm">lotado</span></pre>
+      <ul>
+        <li><strong>Funções</strong> (Tópico 08): <span class="blue">medir_distancia()</span>, <span class="blue">atualizar_led()</span>, <span class="blue">apitar()</span> — código modular</li>
+        <li><strong>Laço while</strong>: lê os dois sensores 1×/segundo continuamente</li>
+        <li><strong>if/else</strong> (Tópico 02/03): decide a cor do LED de cada vaga</li>
+        <li><strong>Detecção de borda</strong>: o buzzer apita só <strong>1 segundo</strong> no instante em que lota</li>
+        <li>Publica via <strong>MQTT</strong> (<span class="blue">smartpark/puc/…</span>) e segue funcionando offline se o WiFi cair</li>
+      </ul>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 6 — Fluxograma -->
+  <div class="slide" data-title="Fluxograma">
+    <div class="tag">Lógica do Código</div>
+    <h2>Fluxograma — loop principal do firmware</h2>
+    <div style="display:flex;justify-content:center;align-items:flex-start;gap:32px;height:calc(100% - 80px)">
+      <svg viewBox="0 0 420 560" width="340" height="470" font-family="'Segoe UI',sans-serif" font-size="12.5">
+        <!-- Início -->
+        <ellipse cx="210" cy="28" rx="70" ry="22" fill="#238636" stroke="#2ea043" stroke-width="1.5"/>
+        <text x="210" y="33" text-anchor="middle" fill="#fff" font-weight="700">Início</text>
+        <line x1="210" y1="50" x2="210" y2="70" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Config -->
+        <rect x="110" y="70" width="200" height="38" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+        <text x="210" y="85" text-anchor="middle" fill="#e6edf3">Configurações iniciais</text>
+        <text x="210" y="101" text-anchor="middle" fill="#8b949e" font-size="11">pinos · WiFi · MQTT</text>
+        <line x1="210" y1="108" x2="210" y2="128" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- while True label -->
+        <rect x="148" y="128" width="124" height="28" rx="6" fill="#1f2937" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="210" y="147" text-anchor="middle" fill="#58a6ff" font-weight="700">while True ↻</text>
+        <line x1="210" y1="156" x2="210" y2="176" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Ler sensores -->
+        <rect x="100" y="176" width="220" height="36" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+        <text x="210" y="191" text-anchor="middle" fill="#e6edf3">Ler d1, d2</text>
+        <text x="210" y="206" text-anchor="middle" fill="#8b949e" font-size="11">medir_distancia() · HC-SR04</text>
+        <line x1="210" y1="212" x2="210" y2="232" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Decisão ocupada -->
+        <polygon points="210,232 310,262 210,292 110,262" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+        <text x="210" y="257" text-anchor="middle" fill="#d29922">d &lt; 20 cm?</text>
+        <text x="210" y="272" text-anchor="middle" fill="#8b949e" font-size="10">por vaga</text>
+        <!-- Sim → vermelho -->
+        <line x1="310" y1="262" x2="365" y2="262" stroke="#ff7b72" stroke-width="1.5" marker-end="url(#arr-r)"/>
+        <rect x="365" y="248" width="48" height="28" rx="4" fill="#2a1416" stroke="#ff7b72" stroke-width="1.2"/>
+        <text x="389" y="263" text-anchor="middle" fill="#ff7b72" font-size="11">🔴 Ocup.</text>
+        <!-- Não → verde -->
+        <line x1="110" y1="262" x2="55" y2="262" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-g)"/>
+        <rect x="7" y="248" width="48" height="28" rx="4" fill="#12261e" stroke="#3fb950" stroke-width="1.2"/>
+        <text x="31" y="263" text-anchor="middle" fill="#3fb950" font-size="11">🟢 Livre</text>
+
+        <!-- LEDs -->
+        <line x1="210" y1="292" x2="210" y2="312" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="100" y="312" width="220" height="28" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+        <text x="210" y="331" text-anchor="middle" fill="#e6edf3">atualizar_led() — vaga 1 e 2</text>
+        <line x1="210" y1="340" x2="210" y2="360" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Decisão lotado -->
+        <polygon points="210,360 310,388 210,416 110,388" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+        <text x="210" y="383" text-anchor="middle" fill="#d29922">lotado e não</text>
+        <text x="210" y="398" text-anchor="middle" fill="#d29922">era antes?</text>
+        <!-- Sim → apitar -->
+        <line x1="310" y1="388" x2="365" y2="388" stroke="#ff7b72" stroke-width="1.5" marker-end="url(#arr-r)"/>
+        <rect x="365" y="374" width="48" height="28" rx="4" fill="#2a1416" stroke="#ff7b72" stroke-width="1.2"/>
+        <text x="389" y="389" text-anchor="middle" fill="#ff7b72" font-size="11">🔔 apitar()</text>
+        <!-- Não → skip -->
+        <line x1="110" y1="388" x2="82" y2="388" stroke="#8b949e" stroke-width="1.5"/>
+        <text x="70" y="393" text-anchor="middle" fill="#8b949e" font-size="10">skip</text>
+
+        <line x1="210" y1="416" x2="210" y2="436" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- MQTT -->
+        <rect x="100" y="436" width="220" height="28" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+        <text x="210" y="451" text-anchor="middle" fill="#e6edf3">Publicar MQTT (se mudou)</text>
+        <line x1="210" y1="464" x2="210" y2="484" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Sleep -->
+        <rect x="148" y="484" width="124" height="28" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+        <text x="210" y="503" text-anchor="middle" fill="#e6edf3">sleep(1)</text>
+
+        <!-- Loop back arrow -->
+        <path d="M 100 498 Q 30 498 30 380 Q 30 128 148 142" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+        <!-- Arrowhead defs -->
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/>
+          </marker>
+          <marker id="arr-r" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#ff7b72"/>
+          </marker>
+          <marker id="arr-g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/>
+          </marker>
+        </defs>
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;max-width:220px">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px">
+          <div style="color:#58a6ff;font-weight:700;font-size:0.85rem;margin-bottom:6px">2 Sensores</div>
+          <div style="color:#8b949e;font-size:0.82rem">HC-SR04 · TRIG/ECHO · distância em cm via <code style="color:#c9d1d9">time_pulse_us</code></div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px">
+          <div style="color:#3fb950;font-weight:700;font-size:0.85rem;margin-bottom:6px">4 Atuadores</div>
+          <div style="color:#8b949e;font-size:0.82rem">LED verde/vermelho por vaga + Buzzer PWM 1 kHz</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px">
+          <div style="color:#d29922;font-weight:700;font-size:0.85rem;margin-bottom:6px">Detecção de borda</div>
+          <div style="color:#8b949e;font-size:0.82rem"><code style="color:#c9d1d9">lotado_ant</code> — buzzer apita só na transição livre → lotado</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px">
+          <div style="color:#58a6ff;font-weight:700;font-size:0.85rem;margin-bottom:6px">MQTT resiliente</div>
+          <div style="color:#8b949e;font-size:0.82rem">Publica só quando estado muda · funciona offline se WiFi cair</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 7 — Wokwi -->
+  <div class="slide" data-title="Simulação Wokwi">
+    <div class="tag">Simulação</div>
+    <h2>Funcionando no Wokwi</h2>
+    <div class="boxes">
+      <div class="box"><div class="label">Plataforma</div><div class="value">Wokwi · ESP32 DevKit V1</div></div>
+      <div class="box"><div class="label">Linguagem</div><div class="value">MicroPython v1.22</div></div>
+      <div class="box"><div class="label">Sensores</div><div class="value">2× HC-SR04 (distância configurável)</div></div>
+      <div class="box"><div class="label">Atuadores</div><div class="value">4× LED + Buzzer PWM</div></div>
+    </div>
+    <ul style="margin-top:24px">
+      <li>Clique no sensor HC-SR04 → o slider muda a distância em tempo real</li>
+      <li>O LED troca de cor ao cruzar os <strong>20 cm</strong> (verde ↔ vermelho)</li>
+      <li>O buzzer dá um <strong>beep de 1 segundo</strong> no momento em que a segunda vaga enche</li>
+    </ul>
+    <div style="margin-top:26px; display:flex; gap:24px; align-items:center; flex-wrap:wrap">
+      <button class="wokwi-btn" onclick="openWokwi()">▶ Abrir simulação no Wokwi</button>
+      <a class="wokwi-link" href="https://wokwi.com/projects/465089138268468225" target="_blank" rel="noopener">ou abrir em nova aba ↗</a>
+      <div style="text-align:center">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=https://wokwi.com/projects/465089138268468225&bgcolor=0d1117&color=58a6ff&format=png" alt="QR Wokwi" style="border-radius:6px;display:block">
+        <span style="font-size:0.72rem;color:#8b949e;margin-top:4px;display:block">Escaneia e testa</span>
+      </div>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 7 — Relato do Desenvolvimento -->
+  <div class="slide" data-title="Relato do Desenvolvimento">
+    <div class="tag">Desenvolvimento</div>
+    <h2>Como foi o processo — o que não saiu do tutorial</h2>
+    <div class="cols">
+      <ul>
+        <li><strong>Tensão do HC-SR04:</strong> pino ECHO manda 5V, ESP32 aguenta só 3,3V → leituras instáveis nos primeiros testes. Solução: divisor resistivo (1kΩ + 2kΩ)</li>
+        <li><strong>Limiar de detecção:</strong> começamos com 10 cm — falso positivo o tempo todo (sensor captava reflexo do chão). Chegamos em 20 cm após testes</li>
+        <li><strong>MQTT no Wokwi:</strong> <code>umqtt.simple</code> não existe no simulador → envolvemos o import em <code>try/except</code> — mesmo código roda online e offline</li>
+        <li><strong>Publicação redundante:</strong> no início publicava a cada segundo; refatoramos pra publicar só quando o estado muda</li>
+      </ul>
+      <div class="diagram">Problema → Diagnóstico → Solução
+
+5V ECHO → leituras erradas
+  → divisor resistivo 1k+2k
+
+10cm limiar → falso positivo
+  → testamos → 20cm ideal
+
+umqtt ausente no Wokwi
+  → try/except ImportError
+
+1 pub/s desnecessário
+  → publicação condicional</div>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 8 — Conquistas e Aprendizados -->
+  <div class="slide" data-title="Conquistas & Aprendizados">
+    <div class="tag">Conquistas</div>
+    <h2>O que a gente aprendeu de verdade</h2>
+    <div class="boxes">
+      <div class="box">
+        <div class="label">🏆 Maior conquista</div>
+        <div class="value" style="font-size:1rem;font-weight:400;color:#c9d1d9;margin-top:8px">Sistema rodando do sensor físico até o dashboard em tempo real — ciclo CPS completo funcionando</div>
+      </div>
+      <div class="box">
+        <div class="label">💡 Maior aprendizado</div>
+        <div class="value" style="font-size:1rem;font-weight:400;color:#c9d1d9;margin-top:8px">O HC-SR04 na prática não é plug-and-play — tensão, limiar e timeout precisam ser ajustados empiricamente</div>
+      </div>
+      <div class="box">
+        <div class="label">🔊 Buzzer com PWM</div>
+        <div class="value" style="font-size:1rem;font-weight:400;color:#c9d1d9;margin-top:8px">Detecção de borda (<code>lotado_ant</code>) — apita 1 s só na transição livre→lotado, não em loop</div>
+      </div>
+      <div class="box">
+        <div class="label">📡 MQTT resiliente</div>
+        <div class="value" style="font-size:1rem;font-weight:400;color:#c9d1d9;margin-top:8px">Se WiFi cai, sistema segue lendo sensores e atuando LEDs — degradação graciosa</div>
+      </div>
+    </div>
+    <p style="margin-top:24px;color:#8b949e;font-size:0.95rem">
+      Custo por vaga: <strong style="color:#3fb950">~R$ 35</strong> · Hardware acessível · Arquitetura que escala com mais ESP32 na mesma rede
+    </p>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 9 — Impacto -->
+  <div class="slide" data-title="Impacto">
+    <div class="tag">Impacto</div>
+    <h2>Por que isso importa</h2>
+    <div class="cols">
+      <ul>
+        <li>San Francisco SFPark: sensores reduziram tempo de busca de vaga em <strong class="green">41%</strong> <span style="font-size:0.8em;color:#8b949e">(Millard-Ball et al., 2014)</span></li>
+        <li>Mercado de smart parking no Brasil: <strong>USD 136 mi → USD 320 mi até 2034</strong> <span style="font-size:0.8em;color:#8b949e">(IMARC Group, 2025)</span></li>
+        <li>Custo por vaga monitorada com HC-SR04: <strong>~R$ 35</strong> vs câmera inteligente ~R$ 800</li>
+        <li>Fácil de escalar: mais ESP32 na mesma rede MQTT</li>
+        <li>Mesma arquitetura funciona pra outros recursos: salas, bikes, vagas PcD</li>
+      </ul>
+      <div class="diagram">ANTES:
+  Motorista circula
+  sem informação
+  → CO₂ + tempo perdido
+
+DEPOIS:
+  LED verde = vai direto
+  LED vermelho = não entra
+  Buzzer = avisa admin
+  Dashboard = visão geral</div>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 10 — Conclusão -->
+  <div class="slide" data-title="Próximos Passos">
+    <div class="tag">Próximos Passos</div>
+    <h2>O que vem a seguir</h2>
+    <div class="roadmap">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Piloto com <strong>10 vagas</strong> no estacionamento A da PUC</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Broker MQTT na nuvem — <strong>HiveMQ</strong> ou AWS IoT Core</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text"><strong>App mobile</strong> com mapa interativo das vagas disponíveis</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text">Autenticação TLS e segurança no protocolo MQTT</div></div>
+    </div>
+    <p style="margin-top:28px;color:#8b949e;font-size:0.95rem">
+      Hardware acessível · Arquitetura escalável · Problema real do campus resolvido
+    </p>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE 11 — Apresentação e Comunicação -->
+  <div class="slide" data-title="Apresentação e Comunicação">
+    <div class="tag">Entrega</div>
+    <h2>Apresentação e Comunicação</h2>
+    <div style="display:flex;flex-direction:column;gap:20px;align-items:center;justify-content:center;height:calc(100% - 80px)">
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:28px 36px;width:100%;max-width:600px;text-align:center">
+        <div style="color:#8b949e;font-size:0.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Vídeo explicativo (YouTube — não listado)</div>
+        <a href="https://youtu.be/-ANPHwUVjhA" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:10px;background:#ff0000;color:#fff;text-decoration:none;border-radius:8px;padding:14px 28px;font-size:1.1rem;font-weight:700;margin-bottom:18px">
+          ▶ Assistir no YouTube
+        </a>
+        <div style="color:#8b949e;font-size:0.85rem;margin-bottom:6px">youtu.be/-ANPHwUVjhA</div>
+        <div style="display:flex;justify-content:center;margin-top:12px">
+          <div style="text-align:center">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://youtu.be/-ANPHwUVjhA&bgcolor=0d1117&color=ff0000&format=png" alt="QR YouTube" style="border-radius:6px;display:block">
+            <span style="font-size:0.72rem;color:#8b949e;margin-top:4px;display:block">Escaneia para assistir</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 20px;text-align:center">
+          <div style="color:#3fb950;font-weight:700;font-size:0.85rem">GitHub</div>
+          <div style="color:#8b949e;font-size:0.82rem;margin-top:4px">Bossmann007/smartpark-puc</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 20px;text-align:center">
+          <div style="color:#58a6ff;font-weight:700;font-size:0.85rem">Wokwi</div>
+          <div style="color:#8b949e;font-size:0.82rem;margin-top:4px">wokwi.com/projects/465089138268468225</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 20px;text-align:center">
+          <div style="color:#d29922;font-weight:700;font-size:0.85rem">Grupo 1</div>
+          <div style="color:#8b949e;font-size:0.82rem;margin-top:4px">Enzo · Gabriel · Diego · Daniel · Luis</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-number"></div>
+  </div>
+
+  <!-- SLIDE FINAL — Dashboard CTA -->
+  <div class="slide" data-title="Demo ao vivo">
+    <div class="tag">Demo ao vivo</div>
+    <h2>Teste agora — clique nas vagas ou abra o Wokwi</h2>
+    <div class="dash-app">
+      <div class="dash-status">
+        <span class="sdot"></span>
+        <span id="dashStatusTxt">Modo demonstração · sem ESP32 · dados simulados para visualização</span>
+      </div>
+      <div class="dash-card">
+        <h4>Estacionamento PUC-PR · bloco monitorado</h4>
+        <div class="dvagas">
+          <div class="dvaga" id="dv1" onclick="dashToggle(1)">
+            <div class="dled"></div>
+            <div class="dtit">VAGA 1</div>
+            <div class="dcar">🚗</div>
+            <div class="dstat">LIVRE</div>
+          </div>
+          <div class="dvaga" id="dv2" onclick="dashToggle(2)">
+            <div class="dled"></div>
+            <div class="dtit">VAGA 2</div>
+            <div class="dcar">🚗</div>
+            <div class="dstat">LIVRE</div>
+          </div>
+        </div>
+        <div class="dash-legend">
+          <span><i style="background:#1E875A"></i> Livre (LED verde aceso)</span>
+          <span><i style="background:#E0564E"></i> Ocupada (LED vermelho aceso)</span>
+        </div>
+        <div class="dash-co2">Cada minuto procurando vaga emite ~0,03 kg CO₂ · o SmartPark elimina buscas desnecessárias</div>
+      </div>
+      <div class="dash-card green">
+        <h4>Estatísticas ao vivo</h4>
+        <div class="dstatcard"><div class="dl">Vagas livres</div><div class="dv" id="dStatLivres" style="color:#1E875A">2 de 2</div></div>
+        <div class="dstatcard"><div class="dl">Total de eventos</div><div class="dv" id="dStatEventos" style="color:#18241E">0</div></div>
+        <div class="dstatcard"><div class="dl">CO₂ potencialmente poupado</div><div class="dv" id="dStatCo2" style="color:#1E875A">0,000 kg</div></div>
+      </div>
+    </div>
+    <div class="dash-hint">Dashboard conectado ao broker.hivemq.com — se o ESP32 no Wokwi estiver rodando, os LEDs mudam aqui em tempo real · <code>smartpark/puc/vaga1·2</code></div>
+    <div class="slide-number"></div>
+  </div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" src="" alt=""></div>
+
+<!-- Modal Wokwi -->
+<div class="wokwi-modal" id="wokwiModal">
+  <div class="wokwi-frame-wrap">
+    <div class="wokwi-bar">
+      <span>Simulação Wokwi — SmartPark PUC</span>
+      <div>
+        <a class="wk-open" href="https://wokwi.com/projects/465089138268468225" target="_blank" rel="noopener">Abrir em nova aba ↗</a>
+        <button class="wk-close" onclick="closeWokwi()" title="Fechar (Esc)">✕</button>
+      </div>
+    </div>
+    <div class="wokwi-body">
+      <div class="wokwi-fallback">Carregando… se a simulação não aparecer, o Wokwi bloqueou o embed neste navegador — use <strong>"Abrir em nova aba ↗"</strong> no topo.</div>
+      <iframe id="wokwiFrame" title="Simulação Wokwi" allow="fullscreen" loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Overview grid -->
+<div class="overview" id="overview">
+  <h3>Visão geral — clique para ir ao slide  ·  (tecla O para fechar)</h3>
+  <div class="ov-grid" id="ovGrid"></div>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button onclick="go(-1)" title="Anterior (←)">&#8592;</button>
+  <span class="progress" id="prog">1 / 1</span>
+  <button onclick="go(1)" title="Próximo (→)">&#8594;</button>
+  <div class="dots" id="dots"></div>
+  <button onclick="toggleOverview()" title="Visão geral (O)">▦</button>
+  <button onclick="toggleFullscreen()" title="Tela cheia (F)">⛶</button>
+  <button onclick="toggleTimer()" id="timerBtn" title="Timer 6 min (T)" style="font-family:monospace;min-width:52px;color:#3fb950">6:00</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"></script>
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let cur = 0;
+
+  // Monta numeros, bolinhas e visao geral dinamicamente
+  const dotsEl = document.getElementById('dots');
+  const ovGrid = document.getElementById('ovGrid');
+  slides.forEach((s, i) => {
+    s.querySelector('.slide-number').textContent = (i + 1) + ' / ' + total;
+
+    const dot = document.createElement('button');
+    dot.className = 'dot';
+    dot.title = s.dataset.title || ('Slide ' + (i + 1));
+    dot.onclick = () => show(i);
+    dotsEl.appendChild(dot);
+
+    const card = document.createElement('div');
+    card.className = 'ov-card';
+    card.onclick = () => { show(i); closeOverview(); };
+    card.innerHTML = '<div class="ov-num">SLIDE ' + (i + 1) + '</div><div class="ov-title">' + (s.dataset.title || '') + '</div>';
+    ovGrid.appendChild(card);
+  });
+  const dots = Array.from(document.querySelectorAll('.dot'));
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prog').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('pbarFill').style.width = ((cur + 1) / total * 100) + '%';
+    dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+  }
+  function go(dir) { show(cur + dir); }
+
+  // ---- Lightbox ----
+  function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+  // ---- Overview ----
+  function toggleOverview() { document.getElementById('overview').classList.toggle('open'); }
+  function closeOverview() { document.getElementById('overview').classList.remove('open'); }
+
+  // ---- Modal Wokwi ----
+  const WOKWI_URL = 'https://wokwi.com/projects/465089138268468225';
+  function openWokwi() {
+    const frame = document.getElementById('wokwiFrame');
+    if (!frame.src) frame.src = WOKWI_URL;   // carrega só na 1ª vez
+    document.getElementById('wokwiModal').classList.add('open');
+  }
+  function closeWokwi() { document.getElementById('wokwiModal').classList.remove('open'); }
+
+  // ---- Fullscreen ----
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+
+  // ---- Teclado ----
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeLightbox(); closeOverview(); closeWokwi(); return; }
+    if (e.key.toLowerCase() === 'o') { toggleOverview(); return; }
+    if (e.key.toLowerCase() === 'f') { toggleFullscreen(); return; }
+    if (document.getElementById('overview').classList.contains('open')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    go(-1);
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End')  show(total - 1);
+  });
+
+  // ---- Touch swipe ----
+  let tx = 0;
+  document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+  document.addEventListener('touchend',   e => {
+    const dx = tx - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) go(dx > 0 ? 1 : -1);
+  });
+
+  // ---- Diagrama CPS interativo ----
+  (function initCps() {
+    const svg = document.getElementById('cpsSvg');
+    if (!svg) return;
+    const tagEl = document.getElementById('cpTag');
+    const titEl = document.getElementById('cpTitle');
+    const descEl = document.getElementById('cpDesc');
+    const panel = document.getElementById('cpsPanel');
+    const cores = { Sensing: '#58a6ff', Computation: '#a371f7', Actuation: '#3fb950', Communication: '#d29922' };
+    const def = { tag: tagEl.textContent, tit: titEl.textContent, desc: descEl.textContent };
+
+    svg.querySelectorAll('.layer').forEach(layer => {
+      const ativar = () => {
+        svg.classList.add('dim');
+        svg.querySelectorAll('.layer').forEach(l => l.classList.remove('hot'));
+        layer.classList.add('hot');
+        tagEl.textContent = layer.dataset.tag;
+        titEl.textContent = layer.dataset.title;
+        descEl.textContent = layer.dataset.desc;
+        panel.style.borderLeftColor = cores[layer.dataset.tag] || '#58a6ff';
+        tagEl.style.color = cores[layer.dataset.tag] || '#58a6ff';
+      };
+      layer.addEventListener('mouseenter', ativar);
+      layer.addEventListener('click', ativar);
+    });
+
+    svg.addEventListener('mouseleave', () => {
+      svg.classList.remove('dim');
+      svg.querySelectorAll('.layer').forEach(l => l.classList.remove('hot'));
+      tagEl.textContent = def.tag; titEl.textContent = def.tit; descEl.textContent = def.desc;
+      panel.style.borderLeftColor = '#58a6ff'; tagEl.style.color = '#58a6ff';
+    });
+  })();
+
+  // ---- Dashboard interativo (recriação do Processing) ----
+  const dash = { livre: [true, true], eventos: 0, somaMs: 0, ts: [0, 0] };
+  function dashToggle(num) {
+    const i = num - 1;
+    const ocupando = dash.livre[i];          // estava livre -> vai ocupar
+    dash.livre[i] = !dash.livre[i];
+    if (ocupando) { dash.eventos++; dash.ts[i] = Date.now(); }
+    else if (dash.ts[i]) { dash.somaMs += Date.now() - dash.ts[i]; }
+
+    const card = document.getElementById('dv' + num);
+    card.classList.toggle('occ', !dash.livre[i]);
+    card.querySelector('.dstat').textContent = dash.livre[i] ? 'LIVRE' : 'OCUPADA';
+    card.querySelector('.dcar').style.visibility = dash.livre[i] ? 'hidden' : 'visible';
+
+    const livres = (dash.livre[0] ? 1 : 0) + (dash.livre[1] ? 1 : 0);
+    const elL = document.getElementById('dStatLivres');
+    elL.textContent = livres + ' de 2';
+    elL.style.color = livres === 2 ? '#1E875A' : (livres === 1 ? '#EFAE1E' : '#E0564E');
+    document.getElementById('dStatEventos').textContent = dash.eventos;
+    const tmMin = dash.eventos > 0 ? (dash.somaMs / dash.eventos / 60000) : 0;
+    const co2 = dash.eventos * tmMin * 0.03;
+    document.getElementById('dStatCo2').textContent = co2.toFixed(3).replace('.', ',') + ' kg';
+  }
+  // Define estado absoluto da vaga (usado pelo MQTT); reaproveita dashToggle.
+  function dashApply(num, ocupada) {
+    if (dash.livre[num - 1] === !ocupada) return;
+    dashToggle(num);
+  }
+
+  // ---- Integracao ao vivo: assina o MQTT (HiveMQ) por WebSocket ----
+  // Quando o ESP32 no Wokwi publica, o dashboard atualiza sozinho.
+  (function initMqtt() {
+    if (typeof mqtt === 'undefined') return;
+    var statusTxt = document.getElementById('dashStatusTxt');
+    var dot = document.querySelector('.dash-status .sdot');
+    var client;
+    try { client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt'); } catch (e) { return; }
+    client.on('connect', function () {
+      client.subscribe('smartpark/puc/vaga1');
+      client.subscribe('smartpark/puc/vaga2');
+      if (statusTxt) statusTxt.textContent = 'Conectado ao broker MQTT \u00b7 aguardando o ESP32 (Wokwi) publicar';
+      if (dot) { dot.style.background = '#2FAE78'; dot.style.boxShadow = '0 0 8px #2FAE78'; }
+    });
+    client.on('message', function (topic, payload) {
+      var msg = payload.toString().trim().toLowerCase();
+      var livre = (msg === '0' || msg === 'livre' || msg === 'free' || msg === 'false');
+      if (topic === 'smartpark/puc/vaga1') dashApply(1, !livre);
+      else if (topic === 'smartpark/puc/vaga2') dashApply(2, !livre);
+      if (statusTxt) statusTxt.textContent = 'ESP32 conectado \u00b7 dados em tempo real via MQTT \u00b7 broker.hivemq.com';
+    });
+    client.on('error', function () {});
+    client.on('offline', function () {
+      if (statusTxt) statusTxt.textContent = 'Modo demonstra\u00e7\u00e3o \u00b7 sem MQTT \u00b7 clique nas vagas';
+      if (dot) { dot.style.background = '#EFAE1E'; dot.style.boxShadow = '0 0 8px #EFAE1E'; }
+    });
+  })();
+
+  // esconde o carro nas vagas livres no início
+  document.querySelectorAll('.dvaga .dcar').forEach(c => c.style.visibility = 'hidden');
+
+  // ---- Timer 6 min ----
+  let timerSec = 360, timerInt = null, timerOn = false;
+  const timerBtn = document.getElementById('timerBtn');
+  function fmtTimer(s) { return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+  function toggleTimer() {
+    if (!timerOn) {
+      timerOn = true;
+      timerInt = setInterval(() => {
+        timerSec--;
+        const pct = timerSec / 360;
+        timerBtn.style.color = pct > 0.33 ? '#3fb950' : (pct > 0.1 ? '#d29922' : '#ff7b72');
+        timerBtn.textContent = timerSec <= 0 ? '⏰ 0:00' : fmtTimer(timerSec);
+        if (timerSec <= 0) { clearInterval(timerInt); timerOn = false; }
+      }, 1000);
+    } else {
+      clearInterval(timerInt); timerOn = false; timerSec = 360;
+      timerBtn.textContent = '6:00'; timerBtn.style.color = '#3fb950';
+    }
+  }
+  document.addEventListener('keydown', e => { if (e.key.toLowerCase() === 't') toggleTimer(); });
+
+  // Inicializa
+  show(0);
+</script>
+</body>
+</html>

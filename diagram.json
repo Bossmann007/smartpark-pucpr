@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "author": "Enzo Bossmann — SmartPark PUC",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 180, "left": 260, "attrs": { "env": "micropython-20231227-v1.22.0" } },
+
+    { "type": "wokwi-hc-sr04", "id": "hcsr1", "top": -20, "left": 30,  "attrs": { "distance": "60" } },
+    { "type": "wokwi-hc-sr04", "id": "hcsr2", "top": -20, "left": 530, "attrs": { "distance": "60" } },
+
+    { "type": "wokwi-led",      "id": "lg1", "top": 196, "left": 80,  "attrs": { "color": "green", "flip": "1" } },
+    { "type": "wokwi-resistor", "id": "r1",  "top": 260, "left": 80,  "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-led",      "id": "lr1", "top": 196, "left": 150, "attrs": { "color": "red", "flip": "1" } },
+    { "type": "wokwi-resistor", "id": "r2",  "top": 260, "left": 150, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-led",      "id": "lg2", "top": 196, "left": 500, "attrs": { "color": "green", "flip": "1" } },
+    { "type": "wokwi-resistor", "id": "r3",  "top": 260, "left": 500, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-led",      "id": "lr2", "top": 196, "left": 570, "attrs": { "color": "red", "flip": "1" } },
+    { "type": "wokwi-resistor", "id": "r4",  "top": 260, "left": 570, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-buzzer", "id": "bz", "top": 580, "left": 290, "attrs": { "volume": "1" } }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+
+    [ "esp:3V3",   "hcsr1:VCC",  "red",    [] ],
+    [ "esp:GND.1", "hcsr1:GND",  "black",  [] ],
+    [ "esp:D5",    "hcsr1:TRIG", "green",  [] ],
+    [ "esp:D18",   "hcsr1:ECHO", "yellow", [] ],
+
+    [ "esp:3V3",   "hcsr2:VCC",  "red",    [] ],
+    [ "esp:GND.1", "hcsr2:GND",  "black",  [] ],
+    [ "esp:D19",   "hcsr2:TRIG", "green",  [] ],
+    [ "esp:D21",   "hcsr2:ECHO", "yellow", [] ],
+
+    [ "lg1:A", "esp:D2",  "limegreen", [] ],
+    [ "lg1:C", "r1:1",    "black",     [] ],
+    [ "r1:2",  "esp:GND.1", "black",   [] ],
+
+    [ "lr1:A", "esp:D4",  "red",       [] ],
+    [ "lr1:C", "r2:1",    "black",     [] ],
+    [ "r2:2",  "esp:GND.1", "black",   [] ],
+
+    [ "lg2:A", "esp:D22", "limegreen", [] ],
+    [ "lg2:C", "r3:1",    "black",     [] ],
+    [ "r3:2",  "esp:GND.1", "black",   [] ],
+
+    [ "lr2:A", "esp:D23", "red",       [] ],
+    [ "lr2:C", "r4:1",    "black",     [] ],
+    [ "r4:2",  "esp:GND.1", "black",   [] ],
+
+    [ "esp:D25",   "bz:1", "purple", [] ],
+    [ "esp:GND.1", "bz:2", "black",  [] ]
+  ],
+  "serialMonitor": { "display": "auto" }
+}
