@@ -1,3 +1,12 @@
+<!-- ENZO-PORTFOLIO-BRAND -->
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111111,100:CA8A04&height=165&section=header&text=SmartPark%20PUCPR&fontSize=42&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Smart%20parking%20monitoring%20for%20a%20cyber-physical%20systems%20course.&descAlignY=57&descSize=14" alt="SmartPark PUCPR" />
+</p>
+
+<p align="center"><strong>ESP32 · MicroPython · MQTT</strong></p>
+
+---
+
 <div align="center">
 
 # 🅿️ SmartPark PUC
@@ -298,3 +307,8 @@ O dashboard recebe dados via MQTT e exibe o estado das vagas em tempo real.
 *Hardware acessível · Arquitetura escalável · Problema real do campus resolvido*
 
 </div>
+
+<!-- ENZO-PORTFOLIO-BRAND-FOOTER -->
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111111,100:CA8A04&height=85&section=footer" alt="Footer" />
+</p>
