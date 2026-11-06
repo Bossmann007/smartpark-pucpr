@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "author": "Enzo Bossmann — SmartPark 2.0 · CPS3 Totem",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 250,
+      "left": 330,
+      "attrs": {
+        "env": "micropython-20231227-v1.22.0"
+      }
+    },
+    {
+      "type": "wokwi-tm1637-7segment",
+      "id": "disp",
+      "top": -40,
+      "left": 260,
+      "attrs": {
+        "color": "red"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "ajuda",
+      "top": 120,
+      "left": -150,
+      "attrs": {
+        "color": "blue",
+        "label": "Ajuda (interfone)",
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-pir-motion-sensor",
+      "id": "pir",
+      "top": 260,
+      "left": -170,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px1",
+      "top": 60,
+      "left": 230,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px2",
+      "top": 60,
+      "left": 280,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px3",
+      "top": 60,
+      "left": 330,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel",
+      "id": "px4",
+      "top": 60,
+      "left": 380,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledverde",
+      "top": 160,
+      "left": 520,
+      "attrs": {
+        "color": "green",
+        "label": "Tem vaga"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rverde",
+      "top": 230,
+      "left": 515,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledverm",
+      "top": 160,
+      "left": 580,
+      "attrs": {
+        "color": "red",
+        "label": "Lotado / alarme"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rverm",
+      "top": 230,
+      "left": 575,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledazul",
+      "top": 160,
+      "left": 640,
+      "attrs": {
+        "color": "blue",
+        "label": "Ajuda"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "razul",
+      "top": 230,
+      "left": 635,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "esp:TX0",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX0",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "px1:VDD",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "px1:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px2:VDD",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "px2:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px1:DOUT",
+      "px2:DIN",
+      "green",
+      []
+    ],
+    [
+      "px3:VDD",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "px3:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px2:DOUT",
+      "px3:DIN",
+      "green",
+      []
+    ],
+    [
+      "px4:VDD",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "px4:VSS",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "px3:DOUT",
+      "px4:DIN",
+      "green",
+      []
+    ],
+    [
+      "px1:DIN",
+      "esp:D5",
+      "green",
+      []
+    ],
+    [
+      "disp:CLK",
+      "esp:D22",
+      "orange",
+      []
+    ],
+    [
+      "disp:DIO",
+      "esp:D21",
+      "purple",
+      []
+    ],
+    [
+      "disp:VCC",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "disp:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "ajuda:1.l",
+      "esp:D13",
+      "blue",
+      []
+    ],
+    [
+      "ajuda:2.l",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "pir:OUT",
+      "esp:D27",
+      "yellow",
+      []
+    ],
+    [
+      "pir:VCC",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "pir:GND",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "ledverde:A",
+      "rverde:1",
+      "green",
+      []
+    ],
+    [
+      "rverde:2",
+      "esp:D4",
+      "green",
+      []
+    ],
+    [
+      "ledverde:C",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "ledverm:A",
+      "rverm:1",
+      "green",
+      []
+    ],
+    [
+      "rverm:2",
+      "esp:RX2",
+      "green",
+      []
+    ],
+    [
+      "ledverm:C",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "ledazul:A",
+      "razul:1",
+      "green",
+      []
+    ],
+    [
+      "razul:2",
+      "esp:TX2",
+      "green",
+      []
+    ],
+    [
+      "ledazul:C",
+      "esp:GND.1",
+      "black",
+      []
+    ]
+  ],
+  "serialMonitor": {
+    "display": "auto"
+  }
+}
