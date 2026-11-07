@@ -40,6 +40,15 @@ for cps, pasta_cps in PASTAS.items():
     print(f"{cps}: hardware em {os.path.relpath(pasta, RAIZ)}/in.json, console em console.log")
 
 print(f"prefixo {a.prefixo} no broker {a.broker}")
+
+
+def parar(sinal, quadro):
+    raise KeyboardInterrupt
+
+
+# em segundo plano o Ctrl+C não chega; SIGTERM (kill) também para os ESP32 simulados
+signal.signal(signal.SIGTERM, parar)
+signal.signal(signal.SIGHUP, parar)
 try:
     if a.segundos:
         time.sleep(a.segundos)
