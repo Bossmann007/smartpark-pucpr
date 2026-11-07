@@ -12,10 +12,10 @@ Prefixo: `cscf/smartpark/` (constante `PREFIXO` no topo de cada `main.py`; troca
 | `cps2/alarme` | CPS2 | CPS3, dashboard | `{"tipo": "cancela_travada", "ativo": true}` ou `{"tipo": "evasao", "ativo": true, "diferenca": 1}` | 1 / não |
 | `cps2/comando` | dashboard | CPS2 | `{"placa": "XYZ9K87", "sentido": "entrada"}` (câmera simulada; sem `sentido` usa a chave), `{"cancela": "abrir"}`, `{"modo": "emergencia"}` / `{"modo": "normal"}`, `{"ping": "t1"}` | 1 / nunca retain |
 | `pagamento` | dashboard (pagar pelo celular) | CPS2 | `{"placa": "XYZ9K87", "valor": 7.0}` | 1 / não |
-| `cps3/sensor` | CPS3 | dashboard | `{"presenca": true}` ou `{"ajuda": true}` | 0 (ajuda: 1) / não |
+| `cps3/sensor` | CPS3 | CPS2 (ajuda), dashboard | `{"presenca": true}` ou `{"ajuda": true}` | 0 (ajuda: 1) / não |
 | `cps3/estado` | CPS3 | dashboard | `{"display": 2, "led": "verde", "fita": ["vermelho", "verde", "amarelo", "azul"], "fita_pisca": false, "ajuda": "nenhuma", "brilho": "baixo", "presenca": false, "ack": "t1"}` | 0 / retain |
 | `cps3/comando` | dashboard | CPS3 | `{"ajuda": "atendido"}`, `{"brilho": "alto"}` (`"baixo"`, `"auto"`), `{"ping": "t1"}` | 1 / nunca retain |
-| `cps1/status`, `cps2/status`, `cps3/status` | cada ESP32 (Last Will) | CPS3 (só `cps1/status`), dashboard | texto `online` / `offline` | 1 / retain (a reafirmação de `online` a cada 10 s sai com QoS 0) |
+| `cps1/status`, `cps2/status`, `cps3/status` | cada ESP32 (Last Will) | CPS2 e CPS3 (só `cps1/status`), dashboard | texto `online` / `offline` | 1 / retain (a reafirmação de `online` a cada 10 s sai com QoS 0) |
 
 ## Campos
 
@@ -33,7 +33,7 @@ Vaga interditada não conta como livre. Republicado a cada mudança e a cada 15 
 ```json
 {"cancela": "fechada", "fim_curso": "fechada", "modo": "normal", "carro": false, "sentido": "entrada",
  "dentro": 1, "placas": [{"placa": "ABC1D23", "tipo": "comum", "avulso": false, "pago": false}],
- "travada": false, "evasao": 0, "ack": "t1"}
+ "travada": false, "evasao": 0, "vagas_ok": true, "ack": "t1"}
 ```
 `placas` serve para o CPS2 lembrar quem está dentro depois de reiniciar (ele relê o próprio retido uma vez).
 
@@ -46,6 +46,7 @@ Vaga interditada não conta como livre. Republicado a cada mudança e a cada 15 
 | `negado` | não abriu | `placa`, `motivo`: `lotado`, `ja_dentro`, `nao_registrado`, `pagamento_pendente`, `sem_carro_na_cancela` |
 | `pagamento` | chegou um pagamento | `placa`, `valor`, `ok`; se `ok` é falso, `motivo: sem_entrada_avulsa` |
 | `abertura_manual` | dashboard mandou abrir | – |
+| `ajuda_totem` | chegou pedido de ajuda do CPS3 (bip na cancela) | – |
 | `modo` | entrou ou saiu da emergência | `modo` |
 | `livre` | placa lida durante emergência | `placa`, `motivo: emergencia` |
 
@@ -57,8 +58,10 @@ Vaga interditada não conta como livre. Republicado a cada mudança e a cada 15 
 4. **Cancela travada:** mandou fechar e o fim de curso continua aberto por 3 s → `cps2/alarme` → CPS3 pisca o LED vermelho.
 5. **Pagamento → saída:** placa avulsa só sai depois do `pagamento` publicado pelo dashboard.
 6. **Emergência:** dashboard publica `{"modo": "emergencia"}` → CPS2 abre e mantém; CPS1 (assina `cps2/estado`) pisca os LEDs; CPS3 pisca a fita em branco.
-7. **Ajuda no totem:** botão no CPS3 → `cps3/sensor` → dashboard mostra o chamado → operador responde em `cps3/comando` → LED azul fica aceso 10 s.
-8. **Confiabilidade:** CPS3 assina `cps1/status`; se o CPS1 cai (Last Will `offline`), o display mostra `----` e a fita pisca laranja.
+7. **Ajuda no totem:** botão no CPS3 → `cps3/sensor` → o CPS2 dá um bip na cancela (onde fica o operador) e o dashboard mostra o chamado → operador responde em `cps3/comando` → LED azul fica aceso 10 s.
+8. **Confiabilidade:** CPS2 e CPS3 assinam `cps1/status`. Se o CPS1 cai (Last Will `offline`), o totem mostra `----` e a fita pisca laranja, e a cancela esquece as vagas velhas (`vagas_ok: false`) e para de negar por lotado até o CPS1 voltar.
+
+Em emergência a cancela fica aberta, mas continua registrando quem entra e sai pela câmera, para a conta de evasão não ficar errada depois.
 
 ## Regras de QoS e retain
 

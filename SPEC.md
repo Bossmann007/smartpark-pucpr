@@ -39,7 +39,7 @@ Pagamento real, câmera real, placas reais, login, banco de dados, hardware fís
 
 ## Pronto quando
 
-1. `uv run sim/teste_integracao.py` sai com 0 (feito: 0 falhas em 48 s, 06/11/2026, depois das reviews).
+1. `uv run sim/teste_integracao.py` sai com 0 (feito: 53 verificações, 0 falhas em 57 s, 06/11/2026, depois das reviews).
 2. `scripts/verify` sai com 0 contra os três Wokwi rodando (prefixo real).
 3. Cada integração de `docs/topicos.md` foi vista acontecer uma vez e está no vídeo.
 4. Os 3 links Wokwi abrem em janela anônima.

@@ -35,6 +35,8 @@ T_COMANDO = PREFIXO + "/cps2/comando"
 T_STATUS = PREFIXO + "/cps2/status"
 T_PAGAMENTO = PREFIXO + "/pagamento"
 T_CPS1_SENSOR = PREFIXO + "/cps1/sensor"
+T_CPS1_STATUS = PREFIXO + "/cps1/status"
+T_CPS3_SENSOR = PREFIXO + "/cps3/sensor"
 
 CARRO_CM = 30            # carro parado na cancela abaixo disso
 TEMPO_ABERTA_MS = 5000   # a cancela fecha sozinha depois disso
@@ -156,7 +158,13 @@ def placa_lida(cliente, placa, sentido):
     base = {"placa": placa, "sentido": sentido, "tipo": tipo, "cadastrada": cadastro is not None}
 
     if modo == "emergencia":
+        # cancela já está aberta; só registra, para a conta de evasão continuar certa
+        if sentido == "entrada":
+            dentro.setdefault(placa, {"tipo": tipo, "avulso": cadastro is None, "pago": False})
+        else:
+            dentro.pop(placa, None)
         evento(cliente, dict(base, evento="livre", motivo="emergencia"))
+        mudou_por_rede = True
         return
 
     if sentido == "entrada":
@@ -225,12 +233,19 @@ def estado_atual():
             "modo": modo, "carro": carro_presente,
             "sentido": "saida" if chave_sentido.value() else "entrada",
             "dentro": len(dentro), "placas": placas, "travada": travada,
-            "evasao": evasao, "ack": ultimo_ack}
+            "evasao": evasao, "vagas_ok": vagas_cps1 is not None, "ack": ultimo_ack}
 
 
 def ao_receber(topico, msg):
     global vagas_cps1, ultimo_ack, mudou_por_rede, restaurado
     topico = topico.decode()
+    if topico == T_CPS1_STATUS:
+        # CPS1 caiu (Last Will): as vagas guardadas ficaram velhas; esquece e não bloqueia por lotado
+        if msg == b"offline":
+            vagas_cps1 = None
+            mudou_por_rede = True
+            print("CPS1 offline: sem dado de vagas")
+        return
     try:
         dados = json.loads(msg) if msg else None
     except ValueError:
@@ -250,6 +265,10 @@ def ao_receber(topico, msg):
             print("Estado restaurado:", len(dentro), "carros dentro")
     elif topico == T_PAGAMENTO:
         pendentes.append(("pagamento", dados))
+    elif topico == T_CPS3_SENSOR:
+        # Pedido de ajuda no totem (CPS3): bip na cancela, onde fica o operador
+        if dados.get("ajuda"):
+            pendentes.append(("ajuda", dados))
     elif topico == T_COMANDO:
         if "ping" in dados:
             ultimo_ack = dados["ping"]
@@ -262,6 +281,10 @@ def tratar_pendentes(cliente):
     global modo, mudou_por_rede
     while pendentes:
         tipo, dados = pendentes.pop(0)
+        if tipo == "ajuda":
+            apitar(250)
+            evento(cliente, {"evento": "ajuda_totem"})
+            continue
         if tipo == "pagamento":
             placa = dados.get("placa")
             carro = dentro.get(placa)
@@ -320,6 +343,8 @@ def conectar_mqtt():
     cliente.subscribe(T_CPS1_SENSOR, qos=1)
     cliente.subscribe(T_COMANDO, qos=1)
     cliente.subscribe(T_PAGAMENTO, qos=1)
+    cliente.subscribe(T_CPS1_STATUS, qos=1)
+    cliente.subscribe(T_CPS3_SENSOR, qos=1)
     print("MQTT conectado como", CLIENT_ID)
     return cliente
 

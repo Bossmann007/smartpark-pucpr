@@ -260,7 +260,10 @@ def main():
                 and j("cps1/estado")["emergencia"] is False)
 
         print("\n# 10. Ajuda no totem, PIR e vaga interditada")
+        t = time.time()
         apertar("cps3", 13)
+        esperar("CPS2 recebeu a ajuda do totem e apitou",
+                lambda: evento_desde(t, lambda e: e["evento"] == "ajuda_totem"))
         esperar("cps3/sensor pede ajuda", lambda: any(top == "cps3/sensor" and "ajuda" in p
                                                        for _, top, p in historico))
         esperar("Totem: ajuda aguardando", lambda: j("cps3/estado")["ajuda"] == "aguardando")
@@ -280,9 +283,11 @@ def main():
         matar("cps1")
         esperar("cps1/status = offline (LWT)", lambda: ultimo.get("cps1/status") == "offline", 30)
         esperar("Totem mostra ----", lambda: j("cps3/estado")["display"] == "----")
+        esperar("CPS2 esquece as vagas velhas", lambda: j("cps2/estado")["vagas_ok"] is False)
         iniciar("cps1")
         esperar("cps1/status = online de novo", lambda: ultimo.get("cps1/status") == "online", 30)
         esperar("Totem volta ao número", lambda: isinstance(j("cps3/estado")["display"], int), 15)
+        esperar("CPS2 volta a ter vagas", lambda: j("cps2/estado")["vagas_ok"] is True, 20)
 
         print("\n# 12. CPS2 reinicia sem esquecer quem está dentro")
         antes = j("cps2/estado")["dentro"]

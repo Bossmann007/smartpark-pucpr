@@ -19,5 +19,5 @@ Módulo acoplado à cancela que já existe; a mesma cancela serve entrada e saí
 - Placa sem cadastro: digitada no dashboard (câmera simulada). Entra como avulso e só sai depois do pagamento pelo celular.
 - Débito automático de R$ 5,00 na saída das placas cadastradas (saldo inicial R$ 50,00).
 - Publica: `cps2/sensor` (eventos), `cps2/estado`, `cps2/alarme`, `cps2/status` (Last Will)
-- Assina: `cps1/sensor`, `cps2/comando`, `pagamento`, `cps2/estado` (só ao reiniciar, para lembrar quem está dentro)
+- Assina: `cps1/sensor`, `cps1/status` (CPS1 caiu: esquece as vagas), `cps3/sensor` (ajuda no totem: bip), `cps2/comando`, `pagamento`, `cps2/estado` (só ao reiniciar, para lembrar quem está dentro)
 - Reaproveitado de `Old/main.py`: `medir_distancia()`, `conectar_wifi()`, buzzer em PWM

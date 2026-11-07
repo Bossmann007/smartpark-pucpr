@@ -141,7 +141,7 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 > Ele é só mais um cliente do broker, pelo WebSocket seguro (`wss`, porta 8884), com `client_id` único por aba. Assina `cscf/smartpark/#` para mostrar tudo e publica nos tópicos `comando` (câmera simulada, abrir cancela, emergência, interditar vaga, atender ajuda, brilho) e `pagamento`. Não fala direto com nenhum ESP32.
 
 **7. Quais as vantagens do MQTT em sistemas ciberfísicos distribuídos?**
-> É leve (cabeçalho de 2 bytes, bom para microcontrolador), desacopla quem publica de quem assina (dá para adicionar um quarto CPS sem mudar os outros), tem QoS para mensagens importantes, retain para o estado atual e Last Will para detectar falha. Funciona em rede instável porque o cliente reconecta e o broker guarda o estado.
+> É leve (cabeçalho fixo a partir de 2 bytes, bom para microcontrolador), desacopla quem publica de quem assina (dá para adicionar um quarto CPS sem mudar os outros), tem QoS para mensagens importantes, retain para o estado atual e Last Will para detectar falha. Funciona em rede instável porque o cliente reconecta e o broker guarda o estado.
 
 ## Outras perguntas prováveis
 
@@ -159,3 +159,35 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 
 **Por que a câmera é simulada?**
 > O Wokwi não tem câmera. O HC-SR04 faz o papel do sensor de presença que dispara a câmera, e os botões ou o dashboard fazem o papel da leitura da placa.
+
+## Perguntas difíceis da banca (simulação de correção, 06/11/2026)
+
+**Em que camada está o MQTT e o que está embaixo dele? Por que TCP e não UDP?**
+> Camada de aplicação, sobre TCP, IP e Wi-Fi. TCP porque a entrega precisa ser confiável e em ordem: o umqtt abre um socket TCP na 1883, manda CONNECT, recebe CONNACK e depois troca PUBLISH e SUBSCRIBE. Quem usa UDP é, por exemplo, o CoAP.
+
+**Por que o dashboard usa a porta 8884 e não a 1883?**
+> O navegador não abre TCP cru, só HTTP e WebSocket. O dashboard fala MQTT dentro de WebSocket seguro (wss), que a HiveMQ atende na 8884.
+
+**Desenhe o pacote PUBLISH.**
+> Cabeçalho fixo de 2 a 5 bytes (tipo, flags de QoS e retain, tamanho), cabeçalho variável com o nome do tópico (e o id do pacote quando é QoS 1) e o payload, que aqui é o JSON.
+
+**O `cps1/sensor` sai com QoS 0 e o CPS2 assina com QoS 1. Com que QoS ele recebe?**
+> Com 0. O QoS vale por trecho (publicador → broker e broker → assinante), e o assinante recebe com o menor dos dois.
+
+**QoS 1 pode duplicar. Uma placa ou um pagamento duplicado fazem estrago?**
+> Não. Pagamento repetido só marca pago de novo. A mesma placa duas vezes na entrada vira "negado, já dentro".
+
+**No broker público qualquer um pode mandar emergência e abrir a cancela?**
+> Pode, porque o broker é público e de teste. Em produção: broker próprio com usuário e senha por dispositivo, ACL (cada ESP32 só publica e assina os seus tópicos, só o dashboard publica comando) e TLS na 8883.
+
+**O que o CPS3 muda em outro ESP32?**
+> O pedido de ajuda: o CPS3 publica em cps3/sensor, e o CPS2 assina e dá um bip na cancela, onde fica o operador.
+
+**Se o CPS1 cair, a cancela decide com dado velho?**
+> Não. O CPS2 assina cps1/status; quando chega o Last Will offline, ele esquece as vagas e para de negar por lotado até o CPS1 voltar. O totem mostra ----.
+
+**Quanto tempo o broker leva para soltar o Last Will?**
+> Se a conexão TCP fecha, na hora. Se ela fica muda, depois de 1,5 × o keepalive: 1,5 × 30 s = 45 s.
+
+**As 6 funções do broker?**
+> Receber as mensagens, filtrar pelo tópico, entregar aos assinantes, gerenciar as conexões (incluindo Last Will e keepalive), garantir o QoS combinado e cuidar da segurança (autenticação e autorização). Também guarda as mensagens retidas.

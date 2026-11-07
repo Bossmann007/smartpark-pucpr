@@ -17,7 +17,7 @@ Projeto final de Conectividade em Sistemas Ciberfísicos (PUCPR, 2026.2). Evolu�
 | [CPS3 Totem](cps3-totem/) | botão de ajuda, PIR | display 7 segmentos, LEDs, fita NeoPixel (1 LED por vaga) | ajuda, presença, estado | vagas e status do CPS1, alarmes e modo do CPS2, comandos |
 | [Dashboard](dashboard/) | – | – | comandos, câmera, pagamento | tudo (`cscf/smartpark/#`) |
 
-Integrações: lotado → a cancela nega; vagas ocupadas × entradas → alarme de evasão; cancela travada → o totem pisca; pagamento pelo celular → a saída abre; emergência → tudo abre e pisca; CPS1 cai → o totem mostra `----`. Detalhes em [`docs/topicos.md`](docs/topicos.md).
+Integrações: lotado → a cancela nega; ajuda no totem → bip na cancela; CPS1 caiu → a cancela para de negar por lotado; vagas ocupadas × entradas → alarme de evasão; cancela travada → o totem pisca; pagamento pelo celular → a saída abre; emergência → tudo abre e pisca; CPS1 cai → o totem mostra `----`. Detalhes em [`docs/topicos.md`](docs/topicos.md).
 
 ![Arquitetura](docs/arquitetura.png)
 
@@ -48,7 +48,7 @@ Integrações: lotado → a cancela nega; vagas ocupadas × entradas → alarme 
 ## Prova de funcionamento
 
 - `scripts/verify`: assina o prefixo no broker e só passa (exit 0) se os 3 CPS estão `online`, o CPS1 publica 4 vagas e cada CPS responde a um `ping` no seu tópico de comando. Precisa de [`uv`](https://docs.astral.sh/uv/).
-- `uv run sim/teste_integracao.py`: roda os três `main.py` reais no MicroPython do computador, com hardware falso, contra a HiveMQ, e confere as 8 integrações, a queda pelo Last Will e a reconexão. Última execução (06/11/2026): 0 falhas em 48 s. Precisa de `brew install micropython` e `micropython -m mip install umqtt.simple`.
+- `uv run sim/teste_integracao.py`: roda os três `main.py` reais no MicroPython do computador, com hardware falso, contra a HiveMQ, e confere as 8 integrações, a queda pelo Last Will e a reconexão. Última execução (06/11/2026): 53 verificações, 0 falhas em 57 s. Precisa de `brew install micropython` e `micropython -m mip install umqtt.simple`.
 - Antes de gravar o vídeo: `uv run scripts/limpar_retidos.py --prefix cscf/smartpark`.
 
 ## Broker

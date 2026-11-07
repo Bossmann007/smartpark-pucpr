@@ -15,6 +15,6 @@ Na entrada do estacionamento: mostra quantas vagas estão livres no display de 7
 | Botão de ajuda | D13 | interfone: avisa o dashboard |
 | PIR | D27 | alguém chegou: brilho alto |
 
-- Publica: `cps3/sensor` (presença, ajuda), `cps3/estado`, `cps3/status` (Last Will)
+- Publica: `cps3/sensor` (presença; ajuda, que faz o CPS2 apitar na cancela), `cps3/estado`, `cps3/status` (Last Will)
 - Assina: `cps1/sensor`, `cps1/status`, `cps2/alarme`, `cps2/estado`, `cps3/comando`
 - Reaproveitado de `Old/`: `conectar_wifi()` e a ideia do totem de vagas (`Old/imgs/puc-totem-vagas.jpg`)
