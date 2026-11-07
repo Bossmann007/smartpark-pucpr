@@ -114,7 +114,7 @@ Como mexer no Wokwi durante a simulação: clicar no HC-SR04 abre o controle des
   7. CPS2: HC-SR04 em 400 cm.
 - **Duração:** 40 s.
 - **Fala:**
-  > "Na saída, a mesma cancela muda de sentido pela chave. O avulso XYZ9K87 é negado: pagamento pendente. Pelo celular, o dashboard publica no tópico pagamento, com QoS 1 porque essa mensagem não pode se perder. O CPS2 assina, marca a placa como paga e confirma. Na segunda leitura a cancela abre. Já a ABC1D23 é cadastrada: sai direto, com débito automático de cinco reais, como o Sem Parar. O pagamento é simulado: nenhuma cobrança real."
+  > "Na saída, a mesma cancela muda de sentido pela chave. O avulso XYZ9K87 é negado: pagamento pendente. Pelo celular, o dashboard publica no tópico pagamento, com QoS 1: o broker confirma que recebeu e entrega pelo menos uma vez ao CPS2 conectado. O CPS2 assina, marca a placa como paga e confirma. Na segunda leitura a cancela abre. Já a ABC1D23 é cadastrada: sai direto, com débito automático de cinco reais, como o Sem Parar. O pagamento é simulado: nenhuma cobrança real."
 
 ## Cena 08 · Cancela travada
 
@@ -157,7 +157,7 @@ Como mexer no Wokwi durante a simulação: clicar no HC-SR04 abre o controle des
 - **Na tela:** CPS1, CPS3 e o status no dashboard.
 - **Ações:**
   1. CPS1: parar a simulação (botão de stop do Wokwi).
-  2. Esperar o dashboard mostrar CPS1 `offline` e o totem mostrar `----` com a fita piscando em laranja. Se demorar, cortar a espera na edição (não verificado no Wokwi quanto tempo o broker leva: no teste local foi menos de 1 s; no pior caso, 1,5 × o keepalive de 60 s).
+  2. Esperar o dashboard mostrar CPS1 `offline` e o totem mostrar `----` com a fita piscando em laranja. Se demorar, cortar a espera na edição (não verificado no Wokwi quanto tempo o broker leva: no teste local foi menos de 1 s; no pior caso, 1,5 × o keepalive de 30 s = 45 s).
   3. CPS1: dar play de novo. Mostrar `online` e o número voltando no totem.
 - **Duração:** 30 s.
 - **Fala:**

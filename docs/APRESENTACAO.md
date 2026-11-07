@@ -51,7 +51,7 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 > "O SmartPark 2.0 é o estacionamento da PUC sem parar na cancela: a vaga é medida uma a uma, a câmera lê a placa e a cancela avisa quando falha. São três sistemas ciberfísicos que só conversam por MQTT."
 
 **De onde viemos (SmartPark 2026.1, Fundamentos de SCF)**
-- 1 ESP32, 2 HC-SR04, LEDs por vaga e buzzer de lotado; só **publicava** (`smartpark/puc/vaga1`, `vaga2`, `status`, em texto) para um dashboard em Processing. Nenhuma assinatura.
+- 1 ESP32, 2 HC-SR04, LEDs por vaga e buzzer de lotado; só **publicava** (`smartpark/puc/vaga1`, `vaga2` em texto 0/1 e `status` num JSON simples) para um dashboard em Processing. Nenhuma assinatura.
 - Reaproveitado (marcado no topo de cada `main.py`): `medir_distancia()` no CPS1 e no CPS2, `atualizar_led()` no CPS1, `conectar_wifi()` nos três, o buzzer em PWM no CPS2 e a ideia do totem de vagas (`Old/imgs/puc-totem-vagas.jpg`), que virou o CPS3.
 - Novo: três ESP32 que publicam e assinam, 14 tópicos em JSON, Last Will e retain, reconexão com re-assinatura, 4 vagas com tipo, câmera de placa simulada, fim de curso com alarmes e dashboard com comandos.
 
@@ -81,7 +81,7 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 | Parte | Na tela | Falar (resumo) |
 |---|---|---|
 | 1 Abertura (24 s) | voo 3D sobre a PUC (OpenStreetMap) até os bolsões | o que é o SmartPark 2.0 |
-| 2 Problema (22 s) | foto do totem E03, hoje × SmartPark | contagem por bolsão, carteirinha na cancela, cancela sem autodiagnóstico |
+| 2 Problema (22 s) | foto do totem E03, hoje × SmartPark | contagem por bolsão, carteirinha na cancela, sem autodiagnóstico de cancela divulgado |
 | 3 De onde viemos (28 s) | fotos do 2026.1, reuso e novo | o que foi reaproveitado, função por função |
 | 4 Arquitetura (24 s) | 3 ESP32, broker, dashboard; ping do verify | tudo passa pelo broker; TCP 1883 e WSS 8884 |
 | 5 Publicar × assinar (28 s) | SUBSCRIBE, PUBLISH, dashboard publica; QoS, retain, Last Will | papel do broker |
@@ -149,13 +149,13 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 > No HTTP, cada sistema teria que perguntar ao outro de tempos em tempos. No MQTT, a mensagem chega na hora para todos os interessados, por uma conexão só.
 
 **E se o broker cair?**
-> Tudo para de se comunicar, mas cada ESP32 continua com as regras locais (o CPS1 ainda acende os LEDs). Os ESP32 tentam reconectar sozinhos. Em produção usaríamos um broker próprio ou em cluster; aqui temos o EMQX de reserva.
+> Tudo para de se comunicar, mas cada ESP32 continua com as regras locais (o CPS1 ainda acende os LEDs, a cancela decide com as últimas vagas recebidas) e tenta reconectar a cada 5 s sem travar. Em produção usaríamos um broker próprio ou em cluster; aqui a reserva é manual: trocar a constante `BROKER` para o EMQX.
 
 **Por que a placa no broker público?**
 > São placas fictícias. Em produção, placa é dado pessoal pela LGPD: usaríamos um ID pseudônimo e um broker com usuário e TLS.
 
 **A PUC já não tem contagem de vagas?**
-> Tem, por bolsão, e tem app e autoatendimento. O SmartPark mede cada vaga, troca a carteirinha pela placa e faz a cancela se autodiagnosticar.
+> Tem, por bolsão, e tem app e autoatendimento. O SmartPark mede cada vaga, troca a carteirinha pela placa e dá à cancela um autodiagnóstico.
 
 **Por que a câmera é simulada?**
 > O Wokwi não tem câmera. O HC-SR04 faz o papel do sensor de presença que dispara a câmera, e os botões ou o dashboard fazem o papel da leitura da placa.

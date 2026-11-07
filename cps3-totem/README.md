@@ -9,7 +9,7 @@ Na entrada do estacionamento: mostra quantas vagas estão livres no display de 7
 |---|---|---|
 | Display TM1637 | CLK D22, DIO D21 | vagas livres ou `----` |
 | Fita NeoPixel ×4 | DIN D5 | V1..V4: verde comum, amarelo idoso, azul PcD, vermelho ocupada, laranja interditada; branco piscando = emergência; laranja piscando = CPS1 fora |
-| LED verde | D4 | tem vaga |
+| LED verde | D4 | tem vaga comum (a que a cancela usa para negar carro comum); com só vaga de idoso ou PcD livre, o display mostra o número e o LED fica vermelho |
 | LED vermelho | RX2 (GPIO16) | lotado; piscando = alarme (evasão ou cancela travada) |
 | LED azul | TX2 (GPIO17) | ajuda: piscando = aguardando, aceso = atendida |
 | Botão de ajuda | D13 | interfone: avisa o dashboard |

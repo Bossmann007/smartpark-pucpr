@@ -21,6 +21,8 @@ Integrações: lotado → a cancela nega; vagas ocupadas × entradas → alarme 
 
 ![Arquitetura](docs/arquitetura.png)
 
+![Fluxos de comunicação](docs/fluxos.png)
+
 ## Pastas
 
 | Pasta | Conteúdo |
@@ -40,13 +42,13 @@ Integrações: lotado → a cancela nega; vagas ocupadas × entradas → alarme 
 1. Em wokwi.com, crie um projeto **ESP32 + MicroPython** para cada sistema.
 2. Substitua o `diagram.json` pelo da pasta do sistema e cole o `main.py`. No CPS3, adicione também o arquivo `tm1637.py`.
 3. Rode os três ao mesmo tempo, **cada um numa janela visível** (aba escondida pausa a simulação).
-4. Abra `dashboard/index.html` no navegador.
+4. Sirva o dashboard (`python3 -m http.server 8000 -d dashboard`) e abra http://localhost:8000/ (por `file://` o navegador bloqueia os módulos).
 5. Confira: `scripts/verify` deve terminar com `verify: passou`.
 
 ## Prova de funcionamento
 
 - `scripts/verify`: assina o prefixo no broker e só passa (exit 0) se os 3 CPS estão `online`, o CPS1 publica 4 vagas e cada CPS responde a um `ping` no seu tópico de comando. Precisa de [`uv`](https://docs.astral.sh/uv/).
-- `uv run sim/teste_integracao.py`: roda os três `main.py` reais no MicroPython do computador, com hardware falso, contra a HiveMQ, e confere as 8 integrações, a queda pelo Last Will e a reconexão. Última execução (06/11/2026): 0 falhas em 51 s. Precisa de `brew install micropython` e `micropython -m mip install umqtt.simple`.
+- `uv run sim/teste_integracao.py`: roda os três `main.py` reais no MicroPython do computador, com hardware falso, contra a HiveMQ, e confere as 8 integrações, a queda pelo Last Will e a reconexão. Última execução (06/11/2026): 0 falhas em 48 s. Precisa de `brew install micropython` e `micropython -m mip install umqtt.simple`.
 - Antes de gravar o vídeo: `uv run scripts/limpar_retidos.py --prefix cscf/smartpark`.
 
 ## Broker

@@ -730,7 +730,9 @@ function aoReceber(topico, payload, packet) {
   const retido = !!packet.retain;
   registrarLog(rel, texto, retido);
   let d = null;
-  if (texto.startsWith('{')) { try { d = JSON.parse(texto); } catch { d = null; } }
+  if (texto.startsWith('{')) { try { d = limpar(JSON.parse(texto)); } catch { d = null; } }
+  if (d && rel === 'cps1/sensor') d.vagas = (Array.isArray(d.vagas) ? d.vagas : []).filter((v) => v && typeof v === 'object');
+  if (d && rel === 'cps2/estado' && !Array.isArray(d.placas)) d.placas = [];
 
   const st = rel.match(/^(cps[123])\/status$/);
   if (st) {
@@ -923,18 +925,36 @@ function agendarRender() {
   });
 }
 
+// O broker é público: qualquer um publica nesses tópicos. Todo texto que chega
+// perde os caracteres de HTML antes de ir para a tela (nenhuma mensagem legítima usa).
+function limpar(v) {
+  if (typeof v === 'string') return v.replace(/[<>&"'`]/g, '');
+  if (Array.isArray(v)) return v.map(limpar);
+  if (v && typeof v === 'object') {
+    const o = {};
+    for (const k of Object.keys(v)) o[k] = limpar(v[k]);
+    return o;
+  }
+  return v;
+}
+
+// Uma seção com dado estranho não pode congelar as outras.
+function seguro(fn) {
+  try { fn(); } catch (e) { console.warn('render', fn.name, e); }
+}
+
 function render() {
-  renderTopo();
-  renderKpis();
-  renderCps1();
-  renderCps2();
-  renderCps3();
-  renderAlarmes();
-  if (feedMudou) { renderFeed(); feedMudou = false; }
-  if (logMudou) { renderLog(); logMudou = false; }
-  renderPagar();
-  if (gemeo) gemeo.atualizar(S);
-  if (mapaMarcador) atualizarMapa();
+  seguro(renderTopo);
+  seguro(renderKpis);
+  seguro(renderCps1);
+  seguro(renderCps2);
+  seguro(renderCps3);
+  seguro(renderAlarmes);
+  if (feedMudou) { seguro(renderFeed); feedMudou = false; }
+  if (logMudou) { seguro(renderLog); logMudou = false; }
+  seguro(renderPagar);
+  if (gemeo) seguro(() => gemeo.atualizar(S));
+  if (mapaMarcador) seguro(atualizarMapa);
   document.body.classList.toggle('desconectado', S.conn !== 'conectado');
   document.querySelectorAll('[data-acao], #cam-form button, #p-pagar').forEach((b) => { b.disabled = S.conn !== 'conectado' || b.dataset.off === '1'; });
 }

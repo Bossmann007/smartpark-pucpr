@@ -41,6 +41,7 @@ TEMPO_ABERTA_MS = 5000   # a cancela fecha sozinha depois disso
 TEMPO_TRAVADA_MS = 3000  # mandou fechar e o fim de curso não confirmou: alarme
 TARIFA = 5.00            # débito automático da placa cadastrada
 PING_MS = 10000          # sinal de vida (keepalive = 30 s)
+RECONECTAR_MS = 5000     # sem rede: nova tentativa a cada 5 s, sem parar a cancela
 
 # Placas de teste (fictícias). Na operação real, o cadastro fica num servidor.
 CADASTRO = {
@@ -143,7 +144,8 @@ def tem_vaga(tipo):
 
 def evento(cliente, dados):
     print("Evento:", dados)
-    cliente.publish(T_SENSOR, json.dumps(dados).encode(), qos=1)
+    if cliente:   # sem rede a decisão já foi tomada; só o aviso não sai
+        cliente.publish(T_SENSOR, json.dumps(dados).encode(), qos=1)
 
 
 def placa_lida(cliente, placa, sentido):
@@ -200,7 +202,8 @@ def conferir_alarmes(cliente):
         travada = agora_travada
         if travada:
             apitar(1500)
-        cliente.publish(T_ALARME, json.dumps({"tipo": "cancela_travada", "ativo": travada}).encode(), qos=1)
+        if cliente:
+            cliente.publish(T_ALARME, json.dumps({"tipo": "cancela_travada", "ativo": travada}).encode(), qos=1)
         print("Cancela travada:", travada)
 
     nova = 0
@@ -209,8 +212,9 @@ def conferir_alarmes(cliente):
         nova = max(0, ocupadas - len(dentro))
     if nova != evasao:
         evasao = nova
-        cliente.publish(T_ALARME, json.dumps(
-            {"tipo": "evasao", "ativo": evasao > 0, "diferenca": evasao}).encode(), qos=1)
+        if cliente:
+            cliente.publish(T_ALARME, json.dumps(
+                {"tipo": "evasao", "ativo": evasao > 0, "diferenca": evasao}).encode(), qos=1)
         print("Evasão:", evasao)
 
 
@@ -320,28 +324,29 @@ def conectar_mqtt():
     return cliente
 
 
-def conectar():
-    while True:
-        try:
-            conectar_wifi()
-            return conectar_mqtt()
-        except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
-            print("Falha de conexão:", erro, "- tentando de novo em 2 s")
-            time.sleep(2)
+def tentar_conectar():
+    """Uma tentativa só. Sem rede, a cancela segue com as regras locais e tenta de novo depois."""
+    try:
+        conectar_wifi()
+        return conectar_mqtt()
+    except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
+        print("Falha de conexão:", erro, "- seguindo offline")
+        return None
 
 
 # ===== PROGRAMA PRINCIPAL =====
 print("SmartPark 2.0 · CPS2 Cancela")
 pendentes = []
 carro_presente = False
-cliente = conectar()
+cliente = tentar_conectar()
+proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
 # Espera o estado retido chegar antes de publicar, para não apagar quem estava dentro.
 inicio = time.ticks_ms()
-while not restaurado and time.ticks_diff(time.ticks_ms(), inicio) < 3000:
+while cliente and not restaurado and time.ticks_diff(time.ticks_ms(), inicio) < 3000:
     try:
         cliente.check_msg()
     except OSError:
-        cliente = conectar()
+        cliente = None
     time.sleep_ms(50)
 restaurado = True
 publicado = None
@@ -349,6 +354,7 @@ ultimo_ping = time.ticks_ms()
 
 while True:
     try:
+        # Parte local: decide e atua com ou sem rede (sem rede, usa as últimas vagas recebidas).
         carro_presente = medir_distancia(trig, echo) < CARRO_CM
         # Câmera simulada pelos botões (a interrupção guardou as placas em `lidas`).
         while lidas:
@@ -362,33 +368,36 @@ while True:
                 evento(cliente, {"evento": "negado", "placa": placa,
                                  "motivo": "sem_carro_na_cancela"})
 
-        for _ in range(5):
-            cliente.check_msg()
-        tratar_pendentes(cliente)
-
         # Fecha sozinha depois do tempo (a não ser em emergência).
         if (cancela == "aberta" and modo == "normal"
                 and time.ticks_diff(time.ticks_ms(), aberta_em) > TEMPO_ABERTA_MS):
             fechar_cancela()
-
         conferir_alarmes(cliente)
         atualizar_buzzer()
 
-        estado = estado_atual()
-        texto = json.dumps(estado)
-        if texto != publicado or mudou_por_rede:
-            cliente.publish(T_ESTADO, texto.encode(), retain=True)   # QoS 0: não trava o loop esperando confirmação
-            publicado = texto
-            mudou_por_rede = False
-
-        if time.ticks_diff(time.ticks_ms(), ultimo_ping) > PING_MS:
-            cliente.ping()
-            cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
-            ultimo_ping = time.ticks_ms()
-        time.sleep_ms(100)
+        # Parte de rede: se caiu, tenta de novo a cada RECONECTAR_MS sem travar a cancela.
+        if cliente is None:
+            if time.ticks_diff(time.ticks_ms(), proxima_tentativa) >= 0:
+                cliente = tentar_conectar()
+                proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
+                publicado = None
+        else:
+            for _ in range(5):
+                cliente.check_msg()
+            tratar_pendentes(cliente)
+            texto = json.dumps(estado_atual())
+            if texto != publicado or mudou_por_rede:
+                cliente.publish(T_ESTADO, texto.encode(), retain=True)   # QoS 0: não trava o loop esperando confirmação
+                publicado = texto
+                mudou_por_rede = False
+            if time.ticks_diff(time.ticks_ms(), ultimo_ping) > PING_MS:
+                cliente.ping()
+                cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
+                ultimo_ping = time.ticks_ms()
     except OSError as erro:
-        print("Conexão perdida:", erro)
-        cliente = conectar()
-        publicado = None
+        print("Conexão perdida:", erro, "- seguindo offline")
+        cliente = None
+        proxima_tentativa = time.ticks_ms()
     except Exception as erro:
         print("Erro ignorado:", erro)
+    time.sleep_ms(100)

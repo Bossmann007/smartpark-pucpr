@@ -40,6 +40,7 @@ T_CPS2_ESTADO = PREFIXO + "/cps2/estado"
 
 ATENDIDO_MS = 10000      # LED azul fica aceso esse tempo depois do atendimento
 PING_MS = 10000          # sinal de vida (keepalive = 30 s)
+RECONECTAR_MS = 5000     # sem rede: nova tentativa a cada 5 s, sem parar o totem
 
 # Cores da fita (R, G, B)
 VERDE = (0, 180, 0)
@@ -192,14 +193,14 @@ def conectar_mqtt():
     return cliente
 
 
-def conectar():
-    while True:
-        try:
-            conectar_wifi()
-            return conectar_mqtt()
-        except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
-            print("Falha de conexão:", erro, "- tentando de novo em 2 s")
-            time.sleep(2)
+def tentar_conectar():
+    """Uma tentativa só. Sem rede, o totem segue com os sensores próprios e tenta de novo depois."""
+    try:
+        conectar_wifi()
+        return conectar_mqtt()
+    except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
+        print("Falha de conexão:", erro, "- seguindo offline")
+        return None
 
 
 def ao_apertar_ajuda(pino):
@@ -213,29 +214,32 @@ botao_ajuda.irq(trigger=Pin.IRQ_FALLING, handler=ao_apertar_ajuda)
 # ===== PROGRAMA PRINCIPAL =====
 print("SmartPark 2.0 · CPS3 Totem")
 display.tracos()
-cliente = conectar()
+cliente = tentar_conectar()
+proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
 mostrado = "inicio"
 publicado = None
+avisar = []              # mensagens dos sensores esperando a rede voltar
 ultimo_ping = time.ticks_ms()
 
 while True:
     try:
-        for _ in range(5):
-            cliente.check_msg()
-
-        # Sensores próprios
+        # Sensores próprios (funcionam com ou sem rede)
         agora_presenca = pir.value() == 1
         if agora_presenca != presenca:
             presenca = agora_presenca
-            cliente.publish(T_SENSOR, json.dumps({"presenca": presenca}).encode())
+            avisar.append(({"presenca": presenca}, 0))
         if apertou_ajuda:
             apertou_ajuda = False
             if ajuda != "aguardando":
                 ajuda = "aguardando"
-                cliente.publish(T_SENSOR, json.dumps({"ajuda": True}).encode(), qos=1)
-                print("Pedido de ajuda enviado")
+                avisar.append(({"ajuda": True}, 1))
+                print("Pedido de ajuda")
         if ajuda == "atendida" and time.ticks_diff(time.ticks_ms(), atendida_em) > ATENDIDO_MS:
             ajuda = "nenhuma"
+
+        # Sem conexão própria, o número das vagas não é confiável: mostra ----.
+        if cliente is None:
+            cps1_online = False
 
         # Atuadores
         brilho_alto = brilho_forcado == "alto" or (brilho_forcado is None and presenca)
@@ -246,25 +250,37 @@ while True:
             mostrar_numero(numero, brilho_alto)
             mostrado = chave
 
-        # Realimentação: publica o que o totem está mostrando (sem as piscadas)
-        estado = {"display": "----" if numero is None else numero, "led": led,
-                  "fita": [NOME_COR.get(c, "?") for c in cores], "fita_pisca": fita_pisca,
-                  "ajuda": ajuda, "brilho": "alto" if brilho_alto else "baixo",
-                  "presenca": presenca, "ack": ultimo_ack}
-        texto = json.dumps(estado)
-        if texto != publicado:
-            cliente.publish(T_ESTADO, texto.encode(), retain=True)   # QoS 0: não trava o loop
-            publicado = texto
-        mudou_por_rede = False
-
-        if time.ticks_diff(time.ticks_ms(), ultimo_ping) > PING_MS:
-            cliente.ping()
-            cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
-            ultimo_ping = time.ticks_ms()
-        time.sleep_ms(100)
+        # Parte de rede: se caiu, tenta de novo a cada RECONECTAR_MS sem travar o totem.
+        if cliente is None:
+            if time.ticks_diff(time.ticks_ms(), proxima_tentativa) >= 0:
+                cliente = tentar_conectar()   # ao conectar, os retidos trazem vagas e status de volta
+                proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
+                publicado = None
+        else:
+            for _ in range(5):
+                cliente.check_msg()
+            while avisar:
+                dados, qos = avisar[0]
+                cliente.publish(T_SENSOR, json.dumps(dados).encode(), qos=qos)
+                avisar.pop(0)
+            # Realimentação: publica o que o totem está mostrando (sem as piscadas)
+            estado = {"display": "----" if numero is None else numero, "led": led,
+                      "fita": [NOME_COR.get(c, "?") for c in cores], "fita_pisca": fita_pisca,
+                      "ajuda": ajuda, "brilho": "alto" if brilho_alto else "baixo",
+                      "presenca": presenca, "ack": ultimo_ack}
+            texto = json.dumps(estado)
+            if texto != publicado:
+                cliente.publish(T_ESTADO, texto.encode(), retain=True)   # QoS 0: não trava o loop
+                publicado = texto
+            mudou_por_rede = False
+            if time.ticks_diff(time.ticks_ms(), ultimo_ping) > PING_MS:
+                cliente.ping()
+                cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
+                ultimo_ping = time.ticks_ms()
     except OSError as erro:
-        print("Conexão perdida:", erro)
-        cliente = conectar()
-        publicado = None
+        print("Conexão perdida:", erro, "- seguindo offline")
+        cliente = None
+        proxima_tentativa = time.ticks_ms()
     except Exception as erro:
         print("Erro ignorado:", erro)
+    time.sleep_ms(100)

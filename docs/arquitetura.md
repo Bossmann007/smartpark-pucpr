@@ -22,6 +22,10 @@ flowchart TB
 
 ## Fluxos de integração (todos passando pelo broker)
 
+![Fluxos de comunicação](fluxos.png)
+
+Quem publica e quem assina cada tópico, e o que cada assinatura faz no atuador (imagem gerada com `mmdc`).
+
 | De | Tópico | Para | Efeito |
 |---|---|---|---|
 | CPS1 | `cps1/sensor` | CPS2 | lotado por tipo → cancela nega; vagas × `dentro` → evasão |

@@ -15,7 +15,7 @@ Prefixo: `cscf/smartpark/` (constante `PREFIXO` no topo de cada `main.py`; troca
 | `cps3/sensor` | CPS3 | dashboard | `{"presenca": true}` ou `{"ajuda": true}` | 0 (ajuda: 1) / não |
 | `cps3/estado` | CPS3 | dashboard | `{"display": 2, "led": "verde", "fita": ["vermelho", "verde", "amarelo", "azul"], "fita_pisca": false, "ajuda": "nenhuma", "brilho": "baixo", "presenca": false, "ack": "t1"}` | 0 / retain |
 | `cps3/comando` | dashboard | CPS3 | `{"ajuda": "atendido"}`, `{"brilho": "alto"}` (`"baixo"`, `"auto"`), `{"ping": "t1"}` | 1 / nunca retain |
-| `cps1/status`, `cps2/status`, `cps3/status` | cada ESP32 (Last Will) | CPS3 (só `cps1/status`), dashboard | texto `online` / `offline` | 1 / retain |
+| `cps1/status`, `cps2/status`, `cps3/status` | cada ESP32 (Last Will) | CPS3 (só `cps1/status`), dashboard | texto `online` / `offline` | 1 / retain (a reafirmação de `online` a cada 10 s sai com QoS 0) |
 
 ## Campos
 

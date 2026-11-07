@@ -38,6 +38,7 @@ LIMIAR_OCUPADA_CM = 50   # abaixo disso tem carro
 LIMIAR_LIVRE_CM = 60     # acima disso a vaga liberou (histerese evita piscar na borda)
 PING_MS = 10000          # sinal de vida para o broker (keepalive = 30 s)
 REPUBLICAR_MS = 15000    # republica as vagas mesmo sem mudança
+RECONECTAR_MS = 5000     # sem rede: nova tentativa a cada 5 s, sem parar os sensores
 
 # ===== PINOS =====
 # (id, tipo, TRIG, ECHO, LED verde, LED vermelho)
@@ -204,46 +205,55 @@ def conectar_mqtt():
     return cliente
 
 
-def conectar():
-    """Tenta até conseguir. Usado no início e sempre que a rede cair."""
-    while True:
-        try:
-            conectar_wifi()
-            return conectar_mqtt()
-        except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
-            print("Falha de conexão:", erro, "- tentando de novo em 2 s")
-            time.sleep(2)
+def tentar_conectar():
+    """Uma tentativa só. Sem rede, o ESP32 segue com as regras locais e tenta de novo depois."""
+    try:
+        conectar_wifi()
+        return conectar_mqtt()
+    except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
+        print("Falha de conexão:", erro, "- seguindo offline")
+        return None
 
 
 # ===== PROGRAMA PRINCIPAL =====
 print("SmartPark 2.0 · CPS1 Vagas")
-cliente = conectar()
+cliente = tentar_conectar()
+proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
 mudou_por_rede = False
 ultimo_ping = time.ticks_ms()
 ultima_publicacao = time.ticks_add(time.ticks_ms(), -REPUBLICAR_MS - 1)   # publica na 1ª volta
 
 while True:
-    try:
-        mudou = ler_vagas()
-        acender_leds()
-        for _ in range(5):
-            cliente.check_msg()
-        agora = time.ticks_ms()
-        if mudou or mudou_por_rede or time.ticks_diff(agora, ultima_publicacao) > REPUBLICAR_MS:
-            publicar(cliente)
-            ultima_publicacao = agora
-            mudou_por_rede = False
-            if mudou:
-                r = resumo_vagas()
-                print("Vagas livres:", r["livres"], r["livres_tipo"])
-        if time.ticks_diff(agora, ultimo_ping) > PING_MS:
-            cliente.ping()
-            cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
-            ultimo_ping = agora
-        time.sleep_ms(200)
-    except OSError as erro:
-        print("Conexão perdida:", erro)
-        cliente = conectar()
-        ultima_publicacao = time.ticks_add(time.ticks_ms(), -REPUBLICAR_MS - 1)
-    except Exception as erro:
-        print("Erro ignorado:", erro)
+    # Parte local: sensores e LEDs funcionam com ou sem rede.
+    mudou = ler_vagas()
+    acender_leds()
+    agora = time.ticks_ms()
+    if mudou:
+        r = resumo_vagas()
+        print("Vagas livres:", r["livres"], r["livres_tipo"])
+
+    # Parte de rede: se caiu, tenta de novo a cada RECONECTAR_MS sem travar a parte local.
+    if cliente is None:
+        if time.ticks_diff(agora, proxima_tentativa) >= 0:
+            cliente = tentar_conectar()
+            proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
+            ultima_publicacao = time.ticks_add(time.ticks_ms(), -REPUBLICAR_MS - 1)
+    else:
+        try:
+            for _ in range(5):
+                cliente.check_msg()
+            if mudou or mudou_por_rede or time.ticks_diff(agora, ultima_publicacao) > REPUBLICAR_MS:
+                publicar(cliente)
+                ultima_publicacao = agora
+                mudou_por_rede = False
+            if time.ticks_diff(agora, ultimo_ping) > PING_MS:
+                cliente.ping()
+                cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
+                ultimo_ping = agora
+        except OSError as erro:
+            print("Conexão perdida:", erro, "- seguindo offline")
+            cliente = None
+            proxima_tentativa = agora
+        except Exception as erro:
+            print("Erro ignorado:", erro)
+    time.sleep_ms(200)

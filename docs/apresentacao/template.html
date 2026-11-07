@@ -257,7 +257,7 @@ body.render #inicio, body.render #controles { display: none; }
     <div class="abs linhas">
       <div class="linha"><div class="hoje"><b>Contagem por bolsão</b><span>O totem mostra o total do bolsão, não qual vaga está livre.</span></div><div class="seta">→</div><div class="novo"><b>Cada <em>vaga</em> medida</b><span>Um HC-SR04 por vaga, com tipo: comum, idoso e PcD.</span></div></div>
       <div class="linha"><div class="hoje"><b>Carteirinha na cancela</b><span>O aluno para e passa o cartão.</span></div><div class="seta">→</div><div class="novo"><b>A câmera lê a <em>placa</em></b><span>Cadastrada: débito automático, como o Sem Parar. Sem cadastro: entra como avulso e paga pelo celular.</span></div></div>
-      <div class="linha"><div class="hoje"><b>Cancela sem autodiagnóstico</b><span>Não avisa sozinha quando trava aberta ou quando entra carro sem registro.</span></div><div class="seta">→</div><div class="novo"><b>A cancela <em>se autodiagnostica</em></b><span>Alarme de cancela travada e de evasão, publicado no broker.</span></div></div>
+      <div class="linha"><div class="hoje"><b>Sem autodiagnóstico divulgado</b><span>Nada avisa sozinho quando a cancela trava aberta ou quando entra carro sem registro.</span></div><div class="seta">→</div><div class="novo"><b>A cancela <em>se autodiagnostica</em></b><span>Alarme de cancela travada e de evasão, publicado no broker.</span></div></div>
     </div>
     <div class="abs nota">A PUCPR já tem contagem por bolsão, o app Estacionamento PUCPR e autoatendimento. O SmartPark não substitui isso: acrescenta a vaga, a placa e o diagnóstico da cancela.</div>
   </div>
@@ -274,7 +274,7 @@ body.render #inicio, body.render #controles { display: none; }
       </div>
       <div class="fatos">
         <div class="fato"><b>1 ESP32</b>, <b>2 HC-SR04</b>, LEDs por vaga e buzzer de lotado</div>
-        <div class="fato">Só <b>publicava</b>: <code>smartpark/puc/vaga1</code>, <code>vaga2</code>, <code>status</code> (texto)</div>
+        <div class="fato">Só <b>publicava</b>: <code>smartpark/puc/vaga1</code>, <code>vaga2</code>, <code>status</code> (0/1 e um JSON simples)</div>
         <div class="fato">Dashboard em Processing; nenhuma assinatura no ESP32</div>
       </div>
     </div>

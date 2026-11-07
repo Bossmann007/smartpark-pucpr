@@ -36,7 +36,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 - Hoje o totem conta as vagas do bolsão inteiro. Não diz qual vaga está livre. O SmartPark mede cada vaga.
 - Na entrada, o aluno passa a carteirinha na cancela. No SmartPark a câmera lê a placa e o débito é automático, como o Sem Parar.
-- E a cancela não se autodiagnostica. O SmartPark avisa quando ela trava aberta e quando entra carro sem registro.
+- E não há autodiagnóstico de cancela divulgado. O SmartPark avisa quando ela trava aberta e quando entra carro sem registro.
 
 **Mais para falar**
 
@@ -45,7 +45,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 **Se perguntarem:** A PUC já não tem contagem de vagas e app?
 
-> Tem: contagem por bolsão, o app Estacionamento PUCPR e autoatendimento. O SmartPark mede cada vaga, troca a carteirinha pela placa e faz a cancela se autodiagnosticar.
+> Tem: contagem por bolsão, o app Estacionamento PUCPR e autoatendimento. O SmartPark mede cada vaga, troca a carteirinha pela placa e dá à cancela um autodiagnóstico.
 
 ---
 
@@ -64,7 +64,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 **Mais para falar**
 
 - medir_distancia está no CPS1 e no CPS2; atualizar_led no CPS1; conectar_wifi nos três; o buzzer em PWM no CPS2; a ideia do totem virou o CPS3.
-- Os tópicos antigos eram smartpark/puc/vaga1, vaga2 e status, em texto. Agora são 14 tópicos em JSON sob cscf/smartpark/.
+- Os tópicos antigos eram smartpark/puc/vaga1 e vaga2 (0 ou 1, em texto) e status (um JSON simples). Agora são 14 tópicos em JSON sob cscf/smartpark/.
 - O projeto antigo tinha 2 vagas; o novo tem 4, com tipo: 2 comuns, 1 idoso, 1 PcD.
 
 **Se perguntarem:** Pode reaproveitar código de outra disciplina?
@@ -202,7 +202,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 **Mais para falar**
 
-- É o autodiagnóstico que a cancela de hoje não tem.
+- É o autodiagnóstico da cancela: ela mesma avisa que não fechou.
 - No teste, o alarme de evasão ainda estava ativo, então o LED do totem já piscava; com a cancela travada ele continua piscando.
 - Os 3 s são a constante TEMPO_TRAVADA_MS do CPS2.
 
@@ -231,7 +231,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 **Se perguntarem:** Por que o pagamento usa QoS 1?
 
-> Porque não pode se perder: QoS 1 entrega pelo menos uma vez, com confirmação do broker.
+> Porque é importante: com QoS 1 o broker confirma que recebeu e entrega pelo menos uma vez a quem está conectado. Se o CPS2 estiver fora do ar, a mensagem não fica guardada (sessão limpa) e o celular mostra que não houve confirmação.
 
 ---
 
@@ -298,7 +298,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 **Se perguntarem:** Como o broker sabe que o ESP32 caiu?
 
-> Pelo keepalive: o ESP32 manda ping a cada 20 s, com keepalive de 60 s. Se a conexão cai ou fica muda além do prazo, o broker publica o Last Will.
+> Pelo keepalive: o ESP32 manda ping a cada 10 s, com keepalive de 30 s. Se a conexão fecha, o broker publica o Last Will na hora; se ela fica muda, publica depois de 1,5 × 30 s = 45 s.
 
 ---
 
@@ -371,6 +371,6 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 **Se perguntarem:** E se o broker cair?
 
-> A comunicação para, mas cada ESP32 continua com as regras locais e tenta reconectar sozinho. Em produção seria um broker próprio, com usuário e TLS; aqui temos o EMQX de reserva.
+> A comunicação para, mas cada ESP32 continua com as regras locais (o CPS1 acende os LEDs, a cancela usa as últimas vagas recebidas) e tenta reconectar a cada 5 s sem travar. Em produção seria um broker próprio, com usuário e TLS; aqui a reserva é manual: trocar a constante BROKER para o EMQX.
 
 ---
