@@ -1,0 +1,16 @@
+{
+  "name": "smartpark-apresentacao",
+  "private": true,
+  "type": "module",
+  "description": "Ferramentas da apresentação animada (render para MP4)",
+  "scripts": {
+    "build": "python3 build.py",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "playwright-core": "^1.65.0",
+    "three": "^0.160.0"
+  }
+}

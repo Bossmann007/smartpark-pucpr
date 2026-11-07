@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartPark 2.0 · apresentação animada</title>
+<style>
+/*__FONTES__*/
+:root {
+  --bg: #07090d; --s1: #0d1118; --s2: #121722; --borda: #1f2633; --tx: #edf1f7; --mut: #8b95a7; --dim: #5a6476;
+  --ac: #8b7cff; --ac2: #b9b0ff; --acf: rgba(139, 124, 255, 0.14);
+  --verde: #34d399; --vermelho: #f05252; --amarelo: #f5c542; --azul: #4c9aff; --laranja: #fb923c; --branco: #e5e7eb; --apagado: #1a1f29;
+  --sans: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+#palco { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 0%, #10141d 0%, var(--bg) 60%); color: var(--tx); font-family: var(--sans);
+  -webkit-font-smoothing: antialiased; }
+#palco::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px); background-size: 32px 32px; }
+body.preview #palco { cursor: none; }
+.abs { position: absolute; }
+.cena { position: absolute; inset: 0; visibility: hidden; opacity: 0; }
+.mono { font-family: var(--mono); }
+.kicker { font-size: 18px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--ac2); }
+.h1 { font-size: 64px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.05; }
+.h2 { font-size: 44px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.1; }
+.mut { color: var(--mut); }
+.ac { color: var(--ac2); }
+code, .code { font-family: var(--mono); color: var(--ac2); }
+
+/* ---------- 3D ---------- */
+#gl { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; visibility: hidden; }
+#abertura .titulo { left: 0; right: 0; top: 330px; text-align: center; }
+#abertura .titulo .nome { font-size: 150px; font-weight: 800; letter-spacing: -5px; line-height: 1; text-shadow: 0 10px 60px rgba(0,0,0,0.8); }
+#abertura .titulo .nome span { color: var(--ac); }
+#abertura .titulo .sub { margin-top: 26px; font-size: 34px; font-weight: 500; color: #d7dcea; text-shadow: 0 4px 30px rgba(0,0,0,0.9); }
+#abertura .local { left: 80px; top: 70px; }
+#abertura .local b { display: block; font-size: 30px; font-weight: 700; margin-top: 6px; text-shadow: 0 4px 20px #000; }
+#abertura .tag { left: 0; right: 0; bottom: 120px; text-align: center; font-size: 36px; font-weight: 600; text-shadow: 0 4px 30px #000; }
+#abertura .tag span { color: var(--ac2); }
+#abertura .osm { left: 40px; bottom: 30px; font-size: 16px; color: #aab3c5; background: rgba(7,9,13,0.7); padding: 6px 12px; border-radius: 8px; }
+.pino { position: absolute; transform: translate(-50%, -100%); text-align: center; pointer-events: none; }
+.pino b { display: inline-block; padding: 6px 12px; border-radius: 8px; background: var(--ac); color: #fff; font-size: 20px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 24px rgba(139,124,255,0.5); }
+.pino i { display: block; width: 2px; height: 34px; margin: 0 auto; background: linear-gradient(var(--ac), transparent); }
+
+/* ---------- HUD ---------- */
+#hud-marca { left: 60px; top: 44px; display: flex; align-items: center; gap: 14px; font-size: 20px; font-weight: 700; }
+#hud-marca i { width: 34px; height: 34px; border-radius: 9px; background: var(--ac); display: grid; place-items: center; font-style: normal; font-weight: 800; color: #fff; font-size: 20px; }
+#hud-marca span { color: var(--dim); font-weight: 500; }
+#hud-parte { right: 60px; top: 50px; font-size: 18px; color: var(--mut); text-align: right; }
+#hud-parte b { color: var(--tx); font-weight: 600; }
+#hud-barra { left: 60px; right: 60px; bottom: 26px; height: 4px; display: flex; gap: 6px; }
+#hud-barra div { position: relative; height: 4px; border-radius: 2px; background: #1b212c; overflow: hidden; }
+#hud-barra div i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ac); }
+
+/* ---------- títulos das cenas com cabeçalho ---------- */
+.cab { left: 60px; top: 100px; right: 60px; }
+.cab .h2 { margin-top: 10px; }
+
+/* ---------- problema ---------- */
+#problema .foto { left: 60px; top: 210px; width: 525px; height: 700px; border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px var(--borda); }
+#problema .foto img { width: 100%; height: 100%; object-fit: cover; }
+#problema .legenda-foto { left: 60px; top: 924px; width: 525px; font-size: 17px; color: var(--mut); }
+#problema .linhas { left: 680px; top: 300px; width: 1180px; }
+.linha { display: grid; grid-template-columns: 470px 70px 1fr; align-items: center; padding: 26px 0; border-top: 1px solid var(--borda); }
+.linha .hoje b, .linha .novo b { display: block; font-size: 30px; font-weight: 700; margin-bottom: 6px; }
+.linha .hoje b { color: #c3c9d6; }
+.linha .hoje span, .linha .novo span { font-size: 21px; color: var(--mut); line-height: 1.35; }
+.linha .seta { font-size: 40px; color: var(--ac); text-align: center; }
+.linha .novo b { color: var(--tx); }
+.linha .novo b em { font-style: normal; color: var(--ac2); }
+#problema .cols { left: 680px; top: 252px; width: 1180px; display: grid; grid-template-columns: 470px 70px 1fr; font-size: 16px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); }
+#problema .nota { left: 680px; top: 900px; width: 1180px; font-size: 20px; color: var(--mut); line-height: 1.45; padding: 18px 22px; border-radius: 14px; background: var(--s1); border: 1px solid var(--borda); }
+
+/* ---------- origem ---------- */
+#origem .esq { left: 60px; top: 190px; width: 860px; }
+#origem .fotos { display: flex; gap: 18px; margin-top: 26px; }
+#origem .fotos figure { margin: 0; width: 274px; }
+#origem .fotos img { width: 274px; height: 420px; object-fit: cover; border-radius: 16px; display: block; box-shadow: 0 0 0 1px var(--borda); }
+#origem .fotos figcaption { font-size: 15px; color: var(--mut); margin-top: 8px; }
+#origem .fatos { margin-top: 26px; display: grid; gap: 12px; }
+#origem .fato { font-size: 22px; color: #c9cfdb; }
+#origem .fato b { color: var(--tx); }
+#origem .dir { left: 990px; top: 190px; width: 870px; }
+#origem .sub { font-size: 17px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
+.reuso { display: grid; grid-template-columns: 330px 1fr; align-items: center; padding: 13px 18px; border-radius: 12px; background: var(--s1); border: 1px solid var(--borda); margin-bottom: 10px; font-size: 21px; }
+.reuso .code { font-size: 20px; }
+.reuso span { color: var(--mut); }
+.reuso span b { color: var(--tx); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { padding: 10px 16px; border-radius: 999px; background: var(--acf); border: 1px solid rgba(139,124,255,0.35); color: #dcd7ff; font-size: 19px; font-weight: 500; white-space: nowrap; }
+
+/* ---------- grafo (arquitetura, publicar/assinar, integrações) ---------- */
+#grafo { position: absolute; left: 0; top: 0; width: 1120px; height: 840px; visibility: hidden; opacity: 0; transform-origin: 0 0; }
+#fios { position: absolute; left: 0; top: 0; overflow: visible; z-index: 5; pointer-events: none; }
+.no { position: absolute; background: var(--s1); border: 1.5px solid var(--borda); border-radius: 20px; box-sizing: border-box; }
+.no .topo { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; font-size: 21px; font-weight: 700; white-space: nowrap; }
+.no .topo .st { width: 11px; height: 11px; border-radius: 50%; background: var(--dim); flex: none; }
+.no .topo .pubsub { margin-left: auto; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: var(--ac2); background: var(--acf); padding: 4px 8px; border-radius: 6px; }
+.no .hw { position: absolute; left: 18px; right: 18px; bottom: 14px; font-size: 14.5px; line-height: 1.35; color: var(--mut); }
+.no .gemeo { position: absolute; left: 18px; right: 18px; top: 56px; height: 176px; }
+.no .chipsn { position: absolute; left: 18px; right: 18px; top: 238px; display: flex; gap: 6px; flex-wrap: nowrap; }
+.cn { font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 6px; background: var(--s2); color: var(--mut); white-space: nowrap; border: 1px solid var(--borda); }
+.cn.on { color: #fff; }
+.no.off { filter: grayscale(1) brightness(0.55); }
+/* CPS1 */
+.vagas { display: flex; gap: 14px; height: 100%; }
+.slot { position: relative; overflow: hidden; width: 68px; height: 168px; border: 2px dashed #2a3240; border-top: none; border-radius: 0 0 10px 10px; box-sizing: border-box; }
+.slot .id { position: absolute; left: 0; right: 0; top: 4px; text-align: center; font-size: 17px; font-weight: 700; }
+.slot .tp { position: absolute; left: 0; right: 0; top: 26px; text-align: center; font-size: 12.5px; color: var(--mut); }
+.slot .carro { position: absolute; left: 11px; width: 42px; height: 66px; top: 52px; border-radius: 12px 12px 9px 9px; background: linear-gradient(#59647a, #3e475a); box-shadow: inset 0 9px 0 -4px #8d9ab3, inset 0 -8px 0 -4px #2a3140; opacity: 0; }
+.slot .led { position: absolute; left: 50%; bottom: 10px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--apagado); }
+/* CPS2 */
+.cancela { display: flex; height: 100%; }
+.cancela svg { flex: none; }
+.cancela .num { margin-left: 8px; padding-top: 6px; }
+.cancela .num b { display: block; font-size: 54px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+.cancela .num span { display: block; font-size: 14px; color: var(--mut); margin-top: 4px; }
+.cancela .num .oc { margin-top: 14px; font-size: 15px; color: #c3c9d6; }
+.cancela .num .oc b { display: inline; font-size: 15px; letter-spacing: 0; }
+/* CPS3 */
+.totem { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 4px; }
+.totem .disp { display: flex; align-items: center; gap: 16px; }
+.totem .seg { background: #050608; border-radius: 10px; padding: 10px 12px; box-shadow: inset 0 0 0 1px #222a36; }
+.totem .leds { display: flex; flex-direction: column; gap: 8px; }
+.totem .leds i { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--apagado); }
+.fita { display: flex; gap: 12px; padding: 10px 14px; border-radius: 10px; background: #050608; box-shadow: inset 0 0 0 1px #222a36; }
+.fita i { display: block; width: 34px; height: 34px; border-radius: 8px; background: var(--apagado); }
+/* dashboard */
+#no-dash .corpo { position: absolute; left: 18px; right: 18px; top: 58px; bottom: 16px; display: grid; grid-template-columns: 150px 170px 1fr; gap: 18px; }
+.stts { display: grid; gap: 8px; align-content: start; }
+.stts div { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 6px 10px; border-radius: 8px; background: var(--s2); }
+.stts i { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
+.stts span { margin-left: auto; font-weight: 500; font-size: 13px; color: var(--mut); }
+.nums div { font-size: 14px; color: var(--mut); margin-bottom: 10px; }
+.nums b { display: block; font-size: 36px; font-weight: 800; color: var(--tx); line-height: 1.05; }
+.evs { font-size: 14.5px; line-height: 1.3; }
+.evs .tt { font-size: 12.5px; font-weight: 700; letter-spacing: 1.5px; color: var(--dim); text-transform: uppercase; margin-bottom: 6px; }
+.evs div.e { padding: 5px 9px; border-radius: 7px; background: var(--s2); margin-bottom: 5px; white-space: nowrap; overflow: hidden; }
+.evs div.e.al { background: rgba(240,82,82,0.14); color: #ffb3b3; }
+.evs div.e.aj { background: rgba(76,154,255,0.14); color: #b6d4ff; }
+/* broker */
+#no-broker { border-radius: 999px; border-color: rgba(139,124,255,0.6); background: linear-gradient(90deg, #15122b, #0f1222); text-align: center; }
+#no-broker .bt { margin-top: 16px; font-size: 22px; font-weight: 800; letter-spacing: 3px; }
+#no-broker .bt span { font-weight: 500; letter-spacing: 0; color: var(--mut); font-size: 18px; margin-left: 10px; }
+#no-broker .rota { margin-top: 8px; font-family: var(--mono); font-size: 15.5px; color: var(--ac2); white-space: nowrap; }
+.rotulo { font-family: var(--mono); font-size: 14px; fill: #d9d4ff; paint-order: stroke; stroke: var(--bg); stroke-width: 5px; }
+.porta { font-family: var(--sans); font-size: 14px; font-weight: 600; fill: var(--dim); }
+
+/* ---------- painel da direita ---------- */
+#painel { left: 1230px; top: 186px; width: 630px; height: 846px; visibility: hidden; opacity: 0; }
+#painel .pk { font-size: 16px; font-weight: 700; letter-spacing: 3px; color: var(--ac2); text-transform: uppercase; }
+#painel .pt { font-size: 40px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.1; margin-top: 8px; }
+#painel .pr { margin-top: 14px; font-size: 20px; line-height: 1.45; color: #c9cfdb; }
+#painel .pr code { font-size: 18px; }
+#painel .extra { margin-top: 14px; }
+.msg { margin-top: 18px; border-radius: 16px; background: var(--s1); border: 1px solid var(--borda); padding: 16px 18px; }
+.msg .mh { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--mut); flex-wrap: wrap; }
+.msg .mh b { color: #fff; background: var(--ac); padding: 3px 8px; border-radius: 6px; font-size: 13px; letter-spacing: 1px; }
+.msg .mh .q { margin-left: auto; font-family: var(--mono); }
+.msg .mt { margin-top: 8px; font-family: var(--mono); font-size: 17px; color: var(--ac2); word-break: break-all; }
+.msg pre { margin: 10px 0 0; font-family: var(--mono); font-size: 14.5px; line-height: 1.45; color: #dfe4ee; white-space: pre-wrap; word-break: break-word; }
+.msg pre .k { color: #9fb4d9; } .msg pre .s { color: #f0c987; } .msg pre .n { color: #8be3c0; } .msg pre .b { color: #ff9f9f; }
+.feed { margin-top: 14px; }
+.feed div { display: grid; grid-template-columns: 82px 150px 1fr; gap: 10px; font-size: 15px; padding: 7px 4px; border-top: 1px solid var(--borda); color: var(--mut); }
+.feed div .tp { font-family: var(--mono); color: #c3c9d6; font-size: 14px; }
+.feed div .sm { color: #c3c9d6; white-space: normal; }
+#painel .rodape { position: absolute; left: 0; right: 0; bottom: 0; font-size: 14px; color: var(--dim); line-height: 1.4; }
+.tres { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.tres div { padding: 10px 14px; border-radius: 12px; background: var(--s1); border: 1px solid var(--borda); font-size: 14px; color: var(--mut); }
+.tres b { display: block; font-size: 32px; font-weight: 800; color: var(--tx); line-height: 1.1; }
+.barra3 { height: 10px; border-radius: 5px; background: #1b212c; overflow: hidden; margin-top: 8px; }
+.barra3 i { display: block; height: 100%; width: 0; background: var(--vermelho); }
+.passos { display: flex; gap: 8px; margin-top: 18px; }
+.passos div { flex: 1; font-size: 15px; font-weight: 600; padding: 8px 10px; border-radius: 10px; background: var(--s1); color: var(--dim); border: 1px solid var(--borda); text-align: center; }
+.passos div.on { color: #fff; background: var(--acf); border-color: rgba(139,124,255,0.5); }
+.tabela { margin-top: 14px; display: grid; gap: 8px; }
+.tabela div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 10px; background: var(--s1); border: 1px solid var(--borda); font-size: 17px; }
+.tabela div code { font-size: 16px; }
+.anat { display: flex; gap: 6px; margin-top: 14px; font-family: var(--mono); font-size: 22px; }
+.anat div { text-align: center; }
+.anat div b { display: block; padding: 6px 10px; border-radius: 8px; background: var(--s2); color: var(--tx); font-weight: 600; }
+.anat div span { display: block; font-family: var(--sans); font-size: 13px; color: var(--mut); margin-top: 6px; }
+.anat .sep { color: var(--dim); padding-top: 6px; }
+.conc { display: grid; gap: 10px; margin-top: 16px; }
+.conc div { padding: 14px 16px; border-radius: 12px; background: var(--s1); border: 1px solid var(--borda); font-size: 18px; color: var(--mut); line-height: 1.4; }
+.conc div b { color: var(--tx); display: block; font-size: 20px; margin-bottom: 2px; }
+
+/* ---------- arquitetura ---------- */
+#arquitetura .cab { text-align: center; top: 50px; }
+#arquitetura .nota { left: 0; right: 0; top: 1012px; text-align: center; font-size: 16px; color: var(--dim); }
+
+/* ---------- ciclo ---------- */
+#ciclo .faixas { left: 60px; top: 262px; width: 1800px; height: 30px; }
+#ciclo .faixa { position: absolute; top: 0; height: 30px; font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; text-align: center; border-bottom: 2px solid; padding-bottom: 4px; box-sizing: border-box; }
+#ciclo .etapas { left: 60px; top: 316px; width: 1800px; height: 420px; }
+#ciclo .citacao { left: 260px; right: 260px; top: 850px; text-align: center; font-size: 25px; line-height: 1.45; color: #c9cfdb; }
+#ciclo .citacao span { display: block; margin-top: 8px; font-size: 16px; color: var(--dim); letter-spacing: 1px; }
+.etapa { position: absolute; top: 0; width: 324px; height: 360px; border-radius: 20px; background: var(--s1); border: 1.5px solid var(--borda); box-sizing: border-box; padding: 24px 22px; }
+.etapa .nn { width: 44px; height: 44px; border-radius: 12px; background: var(--acf); color: var(--ac2); display: grid; place-items: center; font-size: 22px; font-weight: 800; }
+.etapa h3 { margin: 18px 0 8px; font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+.etapa p { margin: 0; font-size: 20px; line-height: 1.4; color: #c9cfdb; }
+.etapa .code { display: block; margin-top: 16px; font-size: 15px; line-height: 1.45; padding: 10px 12px; border-radius: 10px; background: #080a0f; border: 1px solid var(--borda); word-break: break-word; }
+#ciclo svg { position: absolute; left: 0; top: 0; overflow: visible; }
+
+/* ---------- respostas ---------- */
+#respostas .lista { left: 60px; top: 204px; width: 1800px; display: grid; gap: 10px; }
+.resp { display: grid; grid-template-columns: 56px 1fr; gap: 18px; align-items: start; padding: 12px 22px; border-radius: 16px; background: var(--s1); border: 1.5px solid var(--borda); }
+.resp .nn { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 21px; background: var(--s2); color: var(--mut); }
+.resp .q { font-size: 22px; font-weight: 700; }
+.resp .a { font-size: 19px; color: var(--mut); margin-top: 3px; line-height: 1.35; }
+.resp.on { border-color: rgba(139,124,255,0.65); background: linear-gradient(90deg, #15122b, var(--s1)); }
+.resp.on .nn { background: var(--ac); color: #fff; }
+.resp.on .a { color: #dfe4ee; }
+
+/* ---------- fechamento ---------- */
+#fechamento .centro { left: 0; right: 0; top: 250px; text-align: center; }
+#fechamento .nome { font-size: 140px; font-weight: 800; letter-spacing: -5px; line-height: 1; }
+#fechamento .nome span { color: var(--ac); }
+#fechamento .stats { display: flex; justify-content: center; gap: 26px; margin-top: 60px; }
+#fechamento .stat { width: 230px; padding: 22px 0; border-radius: 18px; background: var(--s1); border: 1px solid var(--borda); }
+#fechamento .stat b { display: block; font-size: 60px; font-weight: 800; line-height: 1; }
+#fechamento .stat span { display: block; font-size: 19px; color: var(--mut); margin-top: 8px; }
+#fechamento .mqtt { margin-top: 54px; font-size: 30px; font-weight: 600; color: #c9cfdb; }
+#fechamento .mqtt span { color: var(--ac2); }
+#fechamento .equipe { left: 0; right: 0; bottom: 80px; text-align: center; font-size: 22px; color: var(--mut); }
+
+/* ---------- controles do preview ---------- */
+#inicio { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(0,0,0,0.78); color: #fff; font: 600 30px var(--sans); cursor: pointer; z-index: 10; }
+#inicio small { font-weight: 400; font-size: 18px; color: #aab3c5; max-width: 760px; text-align: center; line-height: 1.5; }
+#controles { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; padding: 10px 16px; border-radius: 12px; background: rgba(20,22,30,0.92); color: #cfd5e2; font: 14px var(--sans); opacity: 0; transition: opacity 0.3s; z-index: 9; }
+#controles.on { opacity: 1; }
+body.render #inicio, body.render #controles { display: none; }
+</style>
+</head>
+<body>
+<div id="palco">
+  <canvas id="gl" width="1920" height="1080"></canvas>
+
+  <!-- (a) abertura -->
+  <div class="cena" id="abertura">
+    <div id="pinos"></div>
+    <div class="abs local"><div class="kicker">PUCPR · Câmpus Curitiba</div><b>Prado Velho, Curitiba (PR)</b></div>
+    <div class="abs titulo"><div class="nome">SmartPark <span>2.0</span></div><div class="sub">O estacionamento da PUC sem parar na cancela</div></div>
+    <div class="abs tag">Três sistemas ciberfísicos <span>·</span> um broker MQTT <span>·</span> um dashboard</div>
+    <div class="abs osm">Mapa 3D: dados © OpenStreetMap contributors (ODbL) · prédios e bolsões de estacionamento do câmpus</div>
+  </div>
+
+  <!-- (b) problema -->
+  <div class="cena" id="problema">
+    <div class="abs cab"><div class="kicker">O problema</div><div class="h2">O que existe hoje e o que o SmartPark acrescenta</div></div>
+    <div class="abs foto"><img id="img-totem" alt=""></div>
+    <div class="abs legenda-foto">Totem do bolsão E03 da PUCPR: o número é do bolsão inteiro. Foto do SmartPark 2026.1.</div>
+    <div class="abs cols"><div>Hoje na PUCPR</div><div></div><div>SmartPark 2.0</div></div>
+    <div class="abs linhas">
+      <div class="linha"><div class="hoje"><b>Contagem por bolsão</b><span>O totem mostra o total do bolsão, não qual vaga está livre.</span></div><div class="seta">→</div><div class="novo"><b>Cada <em>vaga</em> medida</b><span>Um HC-SR04 por vaga, com tipo: comum, idoso e PcD.</span></div></div>
+      <div class="linha"><div class="hoje"><b>Carteirinha na cancela</b><span>O aluno para e passa o cartão.</span></div><div class="seta">→</div><div class="novo"><b>A câmera lê a <em>placa</em></b><span>Cadastrada: débito automático, como o Sem Parar. Sem cadastro: entra como avulso e paga pelo celular.</span></div></div>
+      <div class="linha"><div class="hoje"><b>Cancela sem autodiagnóstico</b><span>Não avisa sozinha quando trava aberta ou quando entra carro sem registro.</span></div><div class="seta">→</div><div class="novo"><b>A cancela <em>se autodiagnostica</em></b><span>Alarme de cancela travada e de evasão, publicado no broker.</span></div></div>
+    </div>
+    <div class="abs nota">A PUCPR já tem contagem por bolsão, o app Estacionamento PUCPR e autoatendimento. O SmartPark não substitui isso: acrescenta a vaga, a placa e o diagnóstico da cancela.</div>
+  </div>
+
+  <!-- (c) de onde viemos -->
+  <div class="cena" id="origem">
+    <div class="abs cab"><div class="kicker">De onde viemos</div><div class="h2">SmartPark PUCPR, 2026.1 → SmartPark 2.0</div></div>
+    <div class="abs esq">
+      <div class="sub" style="margin-top:20px">2026.1 · Fundamentos de Sistemas Ciberfísicos</div>
+      <div class="fotos">
+        <figure><img id="img-portao" alt=""><figcaption>Portão 02</figcaption></figure>
+        <figure><img id="img-lotado" alt=""><figcaption>Estacionamento cheio</figcaption></figure>
+        <figure><img id="img-aerea" alt=""><figcaption>Bolsão E02 visto de cima</figcaption></figure>
+      </div>
+      <div class="fatos">
+        <div class="fato"><b>1 ESP32</b>, <b>2 HC-SR04</b>, LEDs por vaga e buzzer de lotado</div>
+        <div class="fato">Só <b>publicava</b>: <code>smartpark/puc/vaga1</code>, <code>vaga2</code>, <code>status</code> (texto)</div>
+        <div class="fato">Dashboard em Processing; nenhuma assinatura no ESP32</div>
+      </div>
+    </div>
+    <div class="abs dir">
+      <div class="sub" style="margin-top:20px">Reaproveitado (marcado no topo de cada main.py)</div>
+      <div class="reuso"><div class="code">medir_distancia()</div><span>HC-SR04 em cm · <b>CPS1, CPS2</b></span></div>
+      <div class="reuso"><div class="code">atualizar_led()</div><span>verde livre, vermelho ocupada · <b>CPS1</b></span></div>
+      <div class="reuso"><div class="code">conectar_wifi()</div><span>Wokwi-GUEST · <b>CPS1, CPS2, CPS3</b></span></div>
+      <div class="reuso"><div class="code">buzzer em PWM</div><span>duty 0 = silêncio · <b>CPS2</b></span></div>
+      <div class="reuso"><div class="code">ideia do totem</div><span>agora medido vaga a vaga · <b>CPS3</b></span></div>
+      <div class="sub" style="margin-top:26px">Novo em 2026.2</div>
+      <div class="chips" id="novos">
+        <div class="chip">3 ESP32 que publicam e assinam</div><div class="chip">JSON em 14 tópicos</div><div class="chip">Last Will + retain</div>
+        <div class="chip">reconexão e re-assinatura</div><div class="chip">câmera de placa simulada</div><div class="chip">fim de curso e alarmes</div>
+        <div class="chip">4 vagas com tipo</div><div class="chip">dashboard com comandos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- (d) arquitetura: o grafo é compartilhado -->
+  <div class="cena" id="arquitetura">
+    <div class="abs cab"><div class="kicker">Arquitetura de conectividade</div><div class="h2">Nenhum sistema fala direto com outro: tudo passa pelo broker</div></div>
+    <div class="abs nota" id="nota-arq">Mensagens reais: o <code>scripts/verify</code> (um cliente MQTT, como o dashboard) manda <code>{"ping": …}</code> em cada <code>comando</code>; cada CPS responde no seu <code>estado</code> com <code>"ack"</code>.</div>
+  </div>
+
+  <div id="grafo">
+    <svg id="fios" width="1120" height="840" viewBox="0 0 1120 840"></svg>
+    <div class="no" id="no-cps1" style="left:0;top:0;width:350px;height:330px">
+      <div class="topo"><i class="st"></i>CPS1 · Vagas<span class="pubsub">PUB + SUB</span></div>
+      <div class="gemeo"><div class="vagas" id="vagas"></div></div>
+      <div class="hw">4× HC-SR04 (sensor) · LEDs verde e vermelho por vaga (atuador)</div>
+    </div>
+    <div class="no" id="no-cps2" style="left:385px;top:0;width:350px;height:330px">
+      <div class="topo"><i class="st"></i>CPS2 · Cancela<span class="pubsub">PUB + SUB</span></div>
+      <div class="gemeo"><div class="cancela"><svg width="170" height="170" viewBox="0 0 170 170" id="svg-cancela"></svg><div class="num"><b id="c2-dentro">0</b><span>carros dentro</span><div class="oc">vagas ocupadas<br>(do CPS1): <b id="c2-ocup">0</b></div></div></div></div>
+      <div class="chipsn"><span class="cn" id="c2-fim">fim de curso: fechada</span><span class="cn" id="c2-buz">buzzer</span><span class="cn" id="c2-modo">normal</span></div>
+      <div class="hw">HC-SR04, câmera simulada, chaves de sentido e fim de curso · servo e buzzer</div>
+    </div>
+    <div class="no" id="no-cps3" style="left:770px;top:0;width:350px;height:330px">
+      <div class="topo"><i class="st"></i>CPS3 · Totem<span class="pubsub">PUB + SUB</span></div>
+      <div class="gemeo"><div class="totem"><div class="disp"><div class="seg"><svg width="196" height="76" viewBox="0 0 196 76" id="svg-seg"></svg></div><div class="leds"><i id="l-verde"></i><i id="l-verm"></i><i id="l-azul"></i></div></div><div class="fita" id="fita"><i></i><i></i><i></i><i></i></div></div></div>
+      <div class="chipsn"><span class="cn" id="c3-ajuda">ajuda: nenhuma</span><span class="cn" id="c3-brilho">brilho: baixo</span></div>
+      <div class="hw">botão de ajuda e PIR · display 7 segmentos, LEDs e fita NeoPixel</div>
+    </div>
+    <div class="no" id="no-broker" style="left:240px;top:420px;width:640px;height:100px">
+      <div class="bt">BROKER MQTT<span>broker.hivemq.com</span></div>
+      <div class="rota" id="rota">recebe e distribui · cscf/smartpark/…</div>
+    </div>
+    <div class="no" id="no-dash" style="left:200px;top:610px;width:720px;height:230px">
+      <div class="topo"><i class="st" style="background:var(--verde)"></i>Dashboard · HTML + MQTT.js (WebSocket)<span class="pubsub">PUB + SUB</span></div>
+      <div class="corpo">
+        <div class="stts" id="stts"></div>
+        <div class="nums"><div><b id="d-livres">4/4</b>vagas livres</div><div><b id="d-dentro">0</b>carros dentro</div></div>
+        <div class="evs"><div class="tt">Eventos e alarmes</div><div id="evs"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="painel" class="abs"></div>
+
+  <!-- (g) ciclo -->
+  <div class="cena" id="ciclo">
+    <div class="abs cab"><div class="kicker">Item 6 · ciclo ciberfísico</div><div class="h2">Do sensor ao atuador de outro sistema, e de volta</div></div>
+    <div class="abs faixas" id="faixas"></div>
+    <div class="abs etapas" id="etapas"></div>
+    <div class="abs citacao">“A comunicação pela rede amplia as possibilidades de controle, supervisão e integração dos sistemas ciberfísicos.”<span>ENUNCIADO, ITEM 6</span></div>
+  </div>
+
+  <!-- (h) respostas -->
+  <div class="cena" id="respostas">
+    <div class="abs cab"><div class="kicker">Item 9 · o que a equipe precisa explicar</div><div class="h2">Sete perguntas, sete respostas curtas</div></div>
+    <div class="abs lista" id="lista-resp"></div>
+  </div>
+
+  <!-- (i) fechamento -->
+  <div class="cena" id="fechamento">
+    <div class="abs centro">
+      <div class="nome">SmartPark <span>2.0</span></div>
+      <div class="stats" id="stats"></div>
+      <div class="mqtt">MQTT em 5 palavras: <span>broker · publicar · assinar · retain · Last Will</span></div>
+    </div>
+    <div class="abs equipe" id="equipe"></div>
+  </div>
+
+  <div class="abs" id="hud-marca"><i>P</i>SmartPark 2.0 <span>CSCF 2026.2</span></div>
+  <div class="abs" id="hud-parte"></div>
+  <div class="abs" id="hud-barra"></div>
+</div>
+
+<div id="controles"><span>Espaço inicia/pausa · ← volta · → avança · N notas · R reinicia</span></div>
+<div id="inicio">Clique ou aperte espaço para começar<small>Deixe a janela em tela cheia antes. N abre as notas do apresentador numa janela separada. ← volta uma parte, → avança, R reinicia.</small></div>
+
+<script>/*__THREE__*/</script>
+<script>
+"use strict";
+// ======================= dados (o build.py injeta) =======================
+const FOLHAS = __FOLHAS__;
+const LOG = __LOG__;
+const OSM = __OSM__;
+const FOTOS = __FOTOS__;
+const EQUIPE = "Enzo Bossmann";
+const PREFIXO = "cscf/smartpark/";
+
+// ======================= tempo e partes =======================
+let acc = 0;
+const PARTES = FOLHAS.map((f, i) => { const p = { i, id: f.id, titulo: f.titulo, ini: acc, dur: f.dur }; acc += f.dur; return p; });
+const TOTAL = acc;
+const parteEm = t => { for (let i = PARTES.length - 1; i >= 0; i--) if (t >= PARTES[i].ini) return PARTES[i]; return PARTES[0]; };
+const P = id => PARTES.find(p => p.id === id);
+
+// ======================= utilidades (tudo função pura do tempo) =======================
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eo = k => 1 - Math.pow(1 - k, 3);
+const eio = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const pr = (u, a, b) => clamp((u - a) / (b - a));
+const E = (u, a, b) => eo(pr(u, a, b));
+function css(el, prop, v) { const c = el._c || (el._c = {}); if (c[prop] !== v) { c[prop] = v; el.style[prop] = v; } }
+function txt(el, v) { if (el._t !== v) { el._t = v; el.textContent = v; } }
+function htm(el, v) { if (el._h !== v) { el._h = v; el.innerHTML = v; } }
+function attr(el, k, v) { const c = el._a || (el._a = {}); if (c[k] !== v) { c[k] = v; el.setAttribute(k, v); } }
+function aparece(el, a, dy = 24, dx = 0) {
+  css(el, "opacity", a.toFixed(3));
+  css(el, "visibility", a <= 0.002 ? "hidden" : "visible");
+  css(el, "transform", `translate(${(dx * (1 - a)).toFixed(1)}px, ${(dy * (1 - a)).toFixed(1)}px)`);
+}
+// entra nos primeiros `ent` segundos da parte e sai nos últimos `sai`
+function envelope(u, dur, ent = 0.6, sai = 0.5) { return Math.min(eo(pr(u, 0, ent)), 1 - pr(u, dur - sai, dur)); }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ======================= log MQTT =======================
+for (const m of LOG) { try { m.obj = JSON.parse(m.payload); } catch (e) { m.obj = null; } }
+const ASSINANTES = {
+  "cps1/sensor": ["cps2", "cps3", "dash"], "cps1/estado": ["dash"], "cps1/comando": ["cps1"],
+  "cps2/sensor": ["dash"], "cps2/estado": ["cps1", "cps3", "dash"], "cps2/alarme": ["cps3", "dash"], "cps2/comando": ["cps2"],
+  "pagamento": ["cps2"], "cps3/sensor": ["dash"], "cps3/estado": ["dash"], "cps3/comando": ["cps3"],
+  "cps1/status": ["cps3", "dash"], "cps2/status": ["dash"], "cps3/status": ["dash"],
+};
+const QOS = t => /comando|alarme|pagamento|status/.test(t) || t === "cps2/sensor" ? "QoS 1" : "QoS 0";
+const RETAIN = t => /estado|status/.test(t) || t === "cps1/sensor";
+const NOME = { cps1: "CPS1", cps2: "CPS2", cps3: "CPS3", dash: "dashboard", broker: "broker" };
+function publicador(m) {
+  if (m.topico === "pagamento" || m.topico.endsWith("/comando")) return "dash";
+  if (m.topico.endsWith("/status") && m.payload === "offline") return "broker";   // Last Will
+  return m.topico.slice(0, 4);
+}
+// estado de tudo no instante L do log (só mensagens com t <= L)
+function replay(L) {
+  const s = { top: {}, cancela: "fechada", cancelaDesde: -99, buzAte: -99, vagaDesde: [-99, -99, -99, -99], ocup: [false, false, false, false],
+    alarmes: {}, eventos: [], status: { cps1: "offline", cps2: "offline", cps3: "offline" } };
+  for (const m of LOG) {
+    if (m.t > L) break;
+    s.top[m.topico] = m;
+    const o = m.obj;
+    if (m.topico.endsWith("/status")) s.status[m.topico.slice(0, 4)] = m.payload;
+    if (!o) continue;
+    if (m.topico === "cps2/estado" && o.cancela !== s.cancela) { s.cancela = o.cancela; s.cancelaDesde = m.t; }
+    if (m.topico === "cps1/sensor") o.vagas.forEach((v, i) => { if (v.ocupada !== s.ocup[i]) { s.ocup[i] = v.ocupada; s.vagaDesde[i] = m.t; } });
+    if (m.topico === "cps2/sensor") {
+      if (o.evento === "negado") { s.buzAte = m.t + 0.6; s.eventos.push({ t: m.t, c: "", x: `negado ${o.placa} · ${o.motivo}` }); }
+      else if (o.evento === "entrada") s.eventos.push({ t: m.t, c: "", x: `entrada ${o.placa}${o.avulso ? " · avulso" : ""}` });
+      else if (o.evento === "saida") s.eventos.push({ t: m.t, c: "", x: `saída ${o.placa}${o.valor ? " · débito R$ " + o.valor.toFixed(2).replace(".", ",") : ""}` });
+      else if (o.evento === "pagamento") s.eventos.push({ t: m.t, c: "", x: `pagamento ${o.placa} · ${o.ok ? "ok" : "recusado"}` });
+      else if (o.evento === "modo") s.eventos.push({ t: m.t, c: o.modo === "emergencia" ? "al" : "", x: `modo ${o.modo === "emergencia" ? "emergência" : "normal"}` });
+    }
+    if (m.topico === "cps2/alarme") {
+      s.alarmes[o.tipo] = o;
+      if (o.tipo === "cancela_travada" && o.ativo) s.buzAte = m.t + 1.5;
+      s.eventos.push({ t: m.t, c: o.ativo ? "al" : "", x: `${o.tipo === "evasao" ? "evasão" : "cancela travada"} ${o.ativo ? "ATIVO" + (o.diferenca ? " · diferença " + o.diferenca : "") : "encerrado"}` });
+    }
+    if (m.topico === "cps3/sensor" && o.ajuda) s.eventos.push({ t: m.t, c: "aj", x: "chamado de ajuda no totem" });
+    if (m.topico === "cps3/comando" && o.ajuda) s.eventos.push({ t: m.t, c: "aj", x: "operador atendeu o chamado" });
+  }
+  return s;
+}
+const J = (s, t) => s.top[t] && s.top[t].obj;
+
+// ======================= cenas com log: tempo da cena -> tempo do log =======================
+const CENAS = {
+  arquitetura: { kf: [[0, 11.9], [13, 11.9], [21, 12.75], [24, 12.75]], tops: ["cps1/comando", "cps2/comando", "cps3/comando", "cps1/estado", "cps2/estado", "cps3/estado"] },
+  pubsub: { kf: [[0, 15.5], [9.6, 15.5], [10.6, 15.75], [14.6, 15.75], [15.9, 16.47], [18.6, 17.0], [28, 17.0]], tops: ["cps1/sensor", "cps2/comando", "cps2/sensor"] },
+  "int-vagas": { kf: [[0, 14.6], [1.2, 14.6], [10.2, 16.4], [12, 16.4]], tops: ["cps1/sensor", "cps1/estado", "cps3/estado"],
+    regra: "CPS1: distância &lt; 50 cm → vaga ocupada → publica <code>cps1/sensor</code>. O CPS3 assina e redesenha display, LED e fita." },
+  "int-lotado": { kf: [[0, 16.35], [1, 16.35], [12.5, 19.3], [14, 19.3]], tops: ["cps2/comando", "cps2/sensor", "cps1/sensor"],
+    regra: "CPS2: placa comum só entra com <code>livres_tipo.comum</code> &gt; 0; idoso e PcD usam a sua ou uma comum. Sem vaga: nega e toca o buzzer." },
+  "int-evasao": { kf: [[0, 19.7], [1, 19.7], [10.5, 21.0], [12, 21.0]], tops: ["cps1/sensor", "cps2/alarme", "cps3/estado"],
+    regra: "CPS2: vagas ocupadas (do CPS1) − carros dentro (entradas − saídas) &gt; 0 → alarme de evasão em <code>cps2/alarme</code>." },
+  "int-travada": { kf: [[0, 30.3], [1, 30.3], [10.5, 33.95], [12, 33.95]], tops: ["cps2/estado", "cps2/alarme"],
+    regra: "CPS2: mandou fechar e o fim de curso continua aberto por 3 s → buzzer e <code>cancela_travada</code> em <code>cps2/alarme</code>." },
+  "int-pagamento": { kf: [[0, 22.25], [1, 22.25], [13.5, 25.5], [15, 25.5]], tops: ["cps2/comando", "cps2/sensor", "pagamento"],
+    regra: "CPS2: o avulso só sai com <code>pago</code>; a placa cadastrada sai direto, com débito automático de R$ 5,00." },
+  "int-emergencia": { kf: [[0, 34.35], [1, 34.35], [10.5, 35.9], [12, 35.9]], tops: ["cps2/comando", "cps2/sensor", "cps2/estado", "cps1/estado", "cps3/estado"],
+    regra: "Dashboard → <code>cps2/comando</code>. O CPS2 abre e publica <code>cps2/estado</code>; o CPS1 e o CPS3 assinam esse estado e piscam." },
+  "int-ajuda": { kf: [[0, 38.0], [1, 38.0], [9.5, 39.45], [11, 39.45]], tops: ["cps3/sensor", "cps3/comando", "cps3/estado"],
+    regra: "CPS3 publica <code>{\"ajuda\": true}</code>; o operador responde em <code>cps3/comando</code>; o LED azul fica aceso 10 s." },
+  "int-queda": { kf: [[0, 41.35], [1, 41.35], [11.5, 43.3], [13, 43.3]], tops: ["cps1/status", "cps3/estado", "cps1/sensor"],
+    regra: "Last Will: o broker publica <code>offline</code> em <code>cps1/status</code> (retain). O CPS3 assina: mostra <code>----</code> e pisca a fita em laranja." },
+};
+for (const id in CENAS) {
+  const c = CENAS[id], L0 = c.kf[0][1], L1 = c.kf[c.kf.length - 1][1];
+  c.msgs = LOG.filter(m => c.tops.includes(m.topico) && m.t > L0 && m.t <= L1).map(m => {
+    const pub = publicador(m);
+    return { m, pub, subs: ASSINANTES[m.topico] || ["dash"], s: invL(c.kf, m.t) };
+  });
+}
+function L(kf, s) {
+  if (s <= kf[0][0]) return kf[0][1];
+  for (let i = 1; i < kf.length; i++) if (s <= kf[i][0]) return lerp(kf[i - 1][1], kf[i][1], (s - kf[i - 1][0]) / (kf[i][0] - kf[i - 1][0] || 1));
+  return kf[kf.length - 1][1];
+}
+function invL(kf, l) {
+  for (let i = 1; i < kf.length; i++) {
+    const [s0, a] = kf[i - 1], [s1, b] = kf[i];
+    if (l >= a && l <= b && b > a) return s0 + (s1 - s0) * (l - a) / (b - a);
+  }
+  return kf[kf.length - 1][0];
+}
+
+// ======================= grafo =======================
+const ANC = { cps1: [175, 330], cps2: [560, 330], cps3: [945, 330], dash: [560, 610] };
+const BRK = { cps1: [400, 420], cps2: [560, 420], cps3: [720, 420], dash: [560, 520] };
+const SVGNS = "http://www.w3.org/2000/svg";
+const mk = (tag, a = {}, pai) => { const e = document.createElementNS(SVGNS, tag); for (const k in a) e.setAttribute(k, a[k]); if (pai) pai.appendChild(e); return e; };
+const fios = $("fios");
+const defs = mk("defs", {}, fios);
+defs.innerHTML = `<filter id="brilho" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+const FIO = {};
+for (const n of ["cps1", "cps2", "cps3", "dash"]) {
+  const [x1, y1] = ANC[n], [x2, y2] = BRK[n];
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  FIO[n] = { el: mk("line", { x1, y1, x2, y2, stroke: "#2b3344", "stroke-width": 2.5, "stroke-dasharray": len, "stroke-dashoffset": len }, fios), len };
+}
+const portas = [mk("text", { x: 262, y: 382, class: "porta" }, fios), mk("text", { x: 575, y: 382, class: "porta" }, fios), mk("text", { x: 846, y: 382, class: "porta" }, fios), mk("text", { x: 575, y: 572, class: "porta" }, fios)];
+["TCP 1883", "TCP 1883", "TCP 1883", "WSS 8884"].forEach((t, i) => portas[i].textContent = t);
+const POOL = [];
+for (let i = 0; i < 40; i++) {
+  const g = mk("g", { display: "none" }, fios);
+  const c = mk("circle", { r: 9, fill: "#8b7cff", filter: "url(#brilho)" }, g);
+  const anel = mk("circle", { r: 10, fill: "none", stroke: "#b9b0ff", "stroke-width": 2.5, "stroke-dasharray": "4 3" }, g);
+  const tx = mk("text", { x: 16, y: 5, class: "rotulo" }, g);
+  POOL.push({ g, c, anel, tx });
+}
+// gêmeos
+const VG = ["V1", "V2", "V3", "V4"], TP = ["comum", "comum", "idoso", "PcD"];
+$("vagas").innerHTML = VG.map((v, i) => `<div class="slot"><div class="id">${v}</div><div class="tp">${TP[i]}</div><div class="carro"></div><div class="led"></div></div>`).join("");
+const SLOTS = [...document.querySelectorAll("#vagas .slot")].map(s => ({ carro: s.querySelector(".carro"), led: s.querySelector(".led") }));
+const svgC = $("svg-cancela");
+mk("rect", { x: 0, y: 150, width: 170, height: 4, rx: 2, fill: "#232a36" }, svgC);
+mk("rect", { x: 19, y: 112, width: 22, height: 40, rx: 4, fill: "#2c3445" }, svgC);
+const braco = mk("g", {}, svgC);
+mk("rect", { x: 0, y: -7, width: 112, height: 14, rx: 7, fill: "#e5e7eb" }, braco);
+for (let i = 0; i < 3; i++) mk("rect", { x: 14 + i * 32, y: -7, width: 14, height: 14, fill: "#f05252" }, braco);
+mk("circle", { cx: 30, cy: 120, r: 9, fill: "#4a5468" }, svgC);
+// display 7 segmentos (mesmos bits do tm1637.py: bit 0 = a ... bit 6 = g)
+const DIG = [0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F];
+const svgS = $("svg-seg"), SEGS = [];
+for (let d = 0; d < 4; d++) {
+  const ox = d * 46 + 6, w = 28, h = 26, t = 5, segs = [];
+  const H = (x, y) => `M${x + 2},${y} l${t / 2},${-t / 2} h${w - t - 4} l${t / 2},${t / 2} l${-t / 2},${t / 2} h${-(w - t - 4)} z`;
+  const V = (x, y) => `M${x},${y + 2} l${t / 2},${t / 2} v${h - t - 4} l${-t / 2},${t / 2} l${-t / 2},${-t / 2} v${-(h - t - 4)} z`;
+  const oy = 9;
+  const ps = [H(ox, oy), V(ox + w, oy), V(ox + w, oy + h), H(ox, oy + 2 * h), V(ox, oy + h), V(ox, oy), H(ox, oy + h)];
+  for (const p of ps) segs.push(mk("path", { d: p, fill: "#2a0c0c" }, svgS));
+  SEGS.push(segs);
+}
+function display(texto, brilho) {
+  const s = String(texto).padStart(4, " ").slice(-4);
+  for (let d = 0; d < 4; d++) {
+    const ch = s[d], bits = ch === "-" ? 0x40 : ch === " " ? 0 : DIG[+ch] || 0;
+    for (let k = 0; k < 7; k++) attr(SEGS[d][k], "fill", bits >> k & 1 ? (brilho ? "#ff4a3d" : "#d8362c") : "#2a0c0c");
+  }
+}
+$("stts").innerHTML = ["cps1", "cps2", "cps3"].map(n => `<div id="st-${n}"><i></i>${NOME[n]}<span>offline</span></div>`).join("");
+const COR = { verde: "var(--verde)", vermelho: "var(--vermelho)", amarelo: "var(--amarelo)", azul: "var(--azul)", laranja: "var(--laranja)", branco: "var(--branco)", apagado: "var(--apagado)" };
+const brilhoLed = c => c === "var(--apagado)" ? "none" : `0 0 14px ${c}`;
+const pisca = (t, ms) => Math.floor(t * 1000 / ms) % 2 === 0;
+
+function desenharGemeos(st, t, L) {
+  // status (Last Will)
+  for (const n of ["cps1", "cps2", "cps3"]) {
+    const on = st.status[n] === "online";
+    $("no-" + n).classList.toggle("off", !on);
+    css($("no-" + n).querySelector(".st"), "background", on ? "var(--verde)" : "var(--vermelho)");
+    const d = $("st-" + n);
+    css(d.querySelector("i"), "background", on ? "var(--verde)" : "var(--vermelho)");
+    txt(d.querySelector("span"), on ? "online" : "offline");
+  }
+  // CPS1
+  const s1 = J(st, "cps1/sensor"), e1 = J(st, "cps1/estado");
+  for (let i = 0; i < 4; i++) {
+    const v = s1 && s1.vagas[i], oc = v && v.ocupada;
+    const k = oc ? E(L, st.vagaDesde[i], st.vagaDesde[i] + 0.35) : 1 - E(L, st.vagaDesde[i], st.vagaDesde[i] + 0.35);
+    css(SLOTS[i].carro, "opacity", k.toFixed(3));
+    css(SLOTS[i].carro, "transform", `translateY(${(70 * (1 - k)).toFixed(1)}px)`);
+    let cor = e1 ? e1.leds[i] : "verde";
+    if (cor === "piscando") cor = pisca(t, 500) ? "vermelho" : "apagado";
+    const c = COR[cor] || COR.apagado;
+    css(SLOTS[i].led, "background", c); css(SLOTS[i].led, "boxShadow", brilhoLed(c));
+  }
+  // CPS2
+  const e2 = J(st, "cps2/estado");
+  const aberta = st.cancela === "aberta";
+  const k = E(L, st.cancelaDesde, st.cancelaDesde + 0.3);
+  const ang = aberta ? lerp(0, 80, k) : lerp(80, 0, st.cancelaDesde < 0 ? 1 : k);
+  attr(braco, "transform", `translate(30,120) rotate(${(-ang).toFixed(1)})`);
+  txt($("c2-dentro"), e2 ? String(e2.dentro) : "0");
+  txt($("c2-ocup"), s1 ? String(s1.vagas.filter(v => v.ocupada).length) : "0");
+  const fimAb = e2 && e2.fim_curso === "aberta";
+  txt($("c2-fim"), "fim de curso: " + (fimAb ? "aberta" : "fechada"));
+  css($("c2-fim"), "background", fimAb ? "rgba(240,82,82,0.25)" : "var(--s2)"); $("c2-fim").classList.toggle("on", fimAb);
+  const buz = L < st.buzAte;
+  txt($("c2-buz"), buz ? "buzzer tocando" : "buzzer");
+  css($("c2-buz"), "background", buz ? (pisca(t, 150) ? "rgba(245,197,66,0.45)" : "rgba(245,197,66,0.2)") : "var(--s2)"); $("c2-buz").classList.toggle("on", buz);
+  const emg = e2 && e2.modo === "emergencia";
+  txt($("c2-modo"), emg ? "EMERGÊNCIA" : "modo normal");
+  css($("c2-modo"), "background", emg ? "var(--vermelho)" : "var(--s2)"); $("c2-modo").classList.toggle("on", emg);
+  // CPS3
+  const e3 = J(st, "cps3/estado");
+  const disp = e3 ? e3.display : "----";
+  display(disp, e3 && e3.brilho === "alto");
+  const led = e3 ? e3.led : "vermelho";
+  const lv = led === "verde", lr = led === "vermelho" || (led === "vermelho_piscando" && pisca(t, 400));
+  css($("l-verde"), "background", lv ? "var(--verde)" : "var(--apagado)"); css($("l-verde"), "boxShadow", lv ? brilhoLed("var(--verde)") : "none");
+  css($("l-verm"), "background", lr ? "var(--vermelho)" : "var(--apagado)"); css($("l-verm"), "boxShadow", lr ? brilhoLed("var(--vermelho)") : "none");
+  const aj = e3 ? e3.ajuda : "nenhuma", la = aj === "atendida" || (aj === "aguardando" && pisca(t, 400));
+  css($("l-azul"), "background", la ? "var(--azul)" : "var(--apagado)"); css($("l-azul"), "boxShadow", la ? brilhoLed("var(--azul)") : "none");
+  const fita = $("fita").children, on = !(e3 && e3.fita_pisca) || pisca(t, 400);
+  for (let i = 0; i < 4; i++) {
+    const c = e3 && on ? COR[e3.fita[i]] || COR.apagado : COR.apagado;
+    css(fita[i], "background", c); css(fita[i], "boxShadow", brilhoLed(c));
+  }
+  txt($("c3-ajuda"), "ajuda: " + aj);
+  css($("c3-ajuda"), "background", aj !== "nenhuma" ? "rgba(76,154,255,0.3)" : "var(--s2)"); $("c3-ajuda").classList.toggle("on", aj !== "nenhuma");
+  txt($("c3-brilho"), "brilho: " + (e3 ? e3.brilho : "baixo"));
+  // dashboard
+  txt($("d-livres"), s1 ? `${s1.livres}/${s1.total}` : "–");
+  txt($("d-dentro"), e2 ? String(e2.dentro) : "0");
+  htm($("evs"), st.eventos.slice(-3).reverse().map(e => `<div class="e ${e.c}">${esc(e.x)}</div>`).join("") || `<div class="e">sem eventos</div>`);
+}
+
+function desenharPulsos(c, s) {
+  let n = 0, rota = null;
+  const usar = () => POOL[n++];
+  const chegou = {}, saiu = {};
+  for (const p of c.msgs) {
+    const t2 = p.s, t1 = t2 - 0.55, t0 = t1 - 0.6;
+    if (s < (p.pub === "broker" ? t1 : t0) || s > t2 + 0.7) continue;
+    if (s >= t1 - 0.1 && s <= t2 + 0.6) rota = p;
+    if (p.pub !== "broker" && s >= t0 && s <= t1) {           // perna 1: publicador -> broker
+      const k = eio(pr(s, t0, t1)), [x1, y1] = ANC[p.pub], [x2, y2] = BRK[p.pub];
+      const q = usar(); if (!q) break;
+      ponto(q, lerp(x1, x2, k), lerp(y1, y2, k), p.m.topico, true);
+      saiu[p.pub] = 1;
+    }
+    if (s >= t1 && s <= t2) {                                 // perna 2: broker -> assinantes
+      const k = eio(pr(s, t1, t2));
+      for (const d of p.subs) {
+        const [x1, y1] = BRK[d], [x2, y2] = ANC[d];
+        const q = usar(); if (!q) break;
+        ponto(q, lerp(x1, x2, k), lerp(y1, y2, k), "", true);
+      }
+    }
+    if (s > t2 && s <= t2 + 0.7) for (const d of p.subs) chegou[d] = Math.max(chegou[d] || 0, 1 - (s - t2) / 0.7);
+  }
+  return { n, rota, chegou, saiu };
+  function ponto(q, x, y, rotulo, cheio) {
+    attr(q.g, "display", "inline"); attr(q.g, "transform", `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+    attr(q.c, "display", cheio ? "inline" : "none"); attr(q.anel, "display", cheio ? "none" : "inline");
+    txt(q.tx, rotulo);
+  }
+}
+function pulsoAssinatura(q, de, k, rotulo) {
+  const [x1, y1] = ANC[de], [x2, y2] = BRK[de];
+  attr(q.g, "display", "inline"); attr(q.g, "transform", `translate(${lerp(x1, x2, k).toFixed(1)},${lerp(y1, y2, k).toFixed(1)})`);
+  attr(q.c, "display", "none"); attr(q.anel, "display", "inline"); txt(q.tx, rotulo);
+}
+
+// formata o texto cru do payload: quebra o objeto de fora e listas de objetos, mantém os literais
+function jsonCru(raw) {
+  const toks = raw.match(/"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null|[{}\[\]:,]/g) || [];
+  const pilha = []; let out = "", d = 0;
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t === "{" || t === "[") {
+      const quebra = (t === "{" && d === 0) || (t === "[" && toks[i + 1] === "{" && d === 1);
+      pilha.push(quebra); out += t; d++;
+      if (quebra) out += "\n" + "  ".repeat(d);
+    } else if (t === "}" || t === "]") {
+      const quebra = pilha.pop(); d--;
+      if (quebra) out += "\n" + "  ".repeat(d);
+      out += t;
+    } else if (t === ",") out += pilha[pilha.length - 1] ? ",\n" + "  ".repeat(d) : ", ";
+    else if (t === ":") out += ": ";
+    else if (t[0] === '"') out += `<span class="${toks[i + 1] === ":" ? "k" : "s"}">${esc(t)}</span>`;
+    else if (/^-?\d/.test(t)) out += `<span class="n">${t}</span>`;
+    else out += `<span class="b">${t}</span>`;
+  }
+  return out;
+}
+function resumo(m) {
+  const o = m.obj;
+  if (!o) return m.payload;
+  if (m.topico === "cps1/sensor") return `livres ${o.livres} · comuns ${o.livres_comuns}`;
+  if (m.topico === "cps1/estado") return o.emergencia ? "LEDs piscando (emergência)" : `LEDs ${o.leds.join(", ")}`;
+  if (m.topico === "cps2/estado") return `cancela ${o.cancela} · fim de curso ${o.fim_curso} · dentro ${o.dentro}`;
+  if (m.topico === "cps3/estado") return `display ${o.display} · LED ${o.led} · ajuda ${o.ajuda}`;
+  if (m.topico === "cps2/sensor") return [o.evento, o.placa, o.modo, o.motivo, o.avulso ? "avulso" : "", o.ok === true ? "ok" : o.ok === false ? "recusado" : "", o.saldo !== undefined ? "saldo " + o.saldo : ""].filter(Boolean).join(" · ");
+  if (m.topico === "cps2/alarme") return `${o.tipo} · ativo ${o.ativo}${o.diferenca !== undefined ? " · diferença " + o.diferenca : ""}`;
+  return m.payload;
+}
+function caixaMsg(p) {
+  if (!p) return `<div class="msg"><div class="mh">aguardando mensagem…</div></div>`;
+  const m = p.m, lwt = p.pub === "broker";
+  return `<div class="msg"><div class="mh"><b>${lwt ? "LAST WILL" : "PUBLISH"}</b><span>${lwt ? "o broker publica pelo CPS1" : NOME[p.pub] + " → broker → " + p.subs.map(d => NOME[d]).join(", ")}</span><span class="q">t = ${m.t.toFixed(3)} s · ${QOS(m.topico)}${RETAIN(m.topico) ? " · retain" : ""}</span></div>
+    <div class="mt">${PREFIXO}${m.topico}</div><pre>${m.obj ? jsonCru(m.payload) : `<span class="s">${esc(m.payload)}</span>`}</pre></div>`;
+}
+
+// ======================= painel da direita =======================
+const RODAPE = `Mensagens reais do log de <code>sim/teste_integracao.py</code>: os três <code>main.py</code> rodando contra o broker (t = segundos desde o início do teste). Comandos e pagamento são publicados pelo teste, no papel do dashboard.`;
+function painelIntegracao(p, u, c, s, st) {
+  const n = PARTES.filter(x => x.id.startsWith("int-")).findIndex(x => x.id === p.id) + 1;
+  const t0 = FOLHAS[p.i].titulo.replace(/^Integração \d+: /, ""), titulo = t0[0].toUpperCase() + t0.slice(1);
+  const atuais = c.msgs.filter(x => s >= x.s - 1.15);
+  const ult = atuais[atuais.length - 1];
+  let extra = "";
+  if (p.id === "int-travada") {
+    const k = pr(L(c.kf, s), 30.532, 33.77);
+    extra = `<div style="font-size:16px;color:var(--mut)">tempo desde a ordem de fechar, com o fim de curso aberto: <b style="color:var(--tx)">${(k * 3.24).toFixed(1).replace(".", ",")} s</b> (alarme depois de 3 s)</div><div class="barra3"><i style="width:${(k * 100).toFixed(1)}%"></i></div>`;
+  }
+  if (p.id === "int-evasao") {
+    const s1 = J(st, "cps1/sensor"), e2 = J(st, "cps2/estado");
+    const oc = s1 ? s1.vagas.filter(v => v.ocupada).length : 0, de = e2 ? e2.dentro : 0;
+    extra = `<div class="tres"><div><b>${oc}</b>vagas ocupadas (CPS1)</div><div><b>${de}</b>carros dentro (CPS2)</div><div style="border-color:${oc - de > 0 ? "rgba(240,82,82,0.6)" : "var(--borda)"}"><b style="color:${oc - de > 0 ? "var(--vermelho)" : "var(--tx)"}">${Math.max(0, oc - de)}</b>diferença → evasão</div></div>`;
+  }
+  const nf = ult && ult.m.topico === "cps1/sensor" ? 2 : 4;
+  const feed = atuais.slice(-1 - nf, -1).reverse().map(x => `<div><span>${x.m.t.toFixed(3)} s</span><span class="tp">${x.m.topico}</span><span class="sm">${esc(resumo(x.m))}</span></div>`).join("");
+  return `<div class="pk">Integração ${n} de 8</div><div class="pt">${esc(titulo)}</div><div class="pr">${c.regra}</div><div class="extra">${extra}</div>${caixaMsg(ult)}<div class="feed">${feed}</div><div class="rodape">${RODAPE}</div>`;
+}
+function painelPubsub(u, c, s) {
+  const passo = u < 7 ? 0 : u < 13.6 ? 1 : u < 20.5 ? 2 : 3;
+  const nomes = ["1 · Assinar", "2 · Publicar", "3 · Dashboard publica", "4 · QoS, retain, Last Will"];
+  let corpo = "";
+  if (passo === 0) {
+    const linhas = [["cps1/sensor", "CPS2", 2.4], ["cps1/sensor", "CPS3", 3.0], ["cps1/sensor", "dashboard", 3.6], ["cps2/comando", "CPS2", 4.8]];
+    corpo = `<div class="pr">Assinar é avisar o broker: <b>quero receber tudo o que chegar neste tópico</b>. Quem assina não precisa saber quem publica.</div>
+      <div class="tabela">${linhas.map(([tp, q, at]) => `<div style="opacity:${E(u, at, at + 0.5).toFixed(2)}"><code>SUBSCRIBE ${PREFIXO}${tp}</code><b>${q}</b></div>`).join("")}</div>
+      <div class="pr" style="font-size:17px;color:var(--mut)">No código: <code>cliente.subscribe(T_CPS1_SENSOR, qos=1)</code> no CPS2; o dashboard assina <code>cscf/smartpark/#</code>.</div>`;
+  } else if (passo === 1) {
+    const p = c.msgs.find(x => x.m.topico === "cps1/sensor");
+    corpo = `<div class="pr">Publicar é mandar uma mensagem para um tópico. O broker entrega <b>uma cópia para cada assinante</b>.</div>
+      <div class="anat"><div><b>cscf</b><span>disciplina</span></div><div class="sep">/</div><div><b>smartpark</b><span>equipe</span></div><div class="sep">/</div><div><b>cps1</b><span>sistema</span></div><div class="sep">/</div><div><b>sensor</b><span>tipo</span></div></div>
+      ${u >= c.msgs[0].s - 1.15 ? caixaMsg(p) : ""}`;
+  } else if (passo === 2) {
+    const a = c.msgs.find(x => x.m.topico === "cps2/comando"), b = c.msgs.find(x => x.m.topico === "cps2/sensor");
+    corpo = `<div class="pr">O dashboard também é cliente do broker. Ele publica no <code>comando</code> do CPS2 e <b>só o CPS2 recebe</b>, porque só ele assina esse tópico.</div>
+      ${caixaMsg(s >= b.s - 1.15 ? b : a)}`;
+  } else {
+    const it = [["QoS 0", "leituras e estado: entrega sem confirmação, o loop não trava."], ["QoS 1", "comandos, alarmes e pagamento: entrega com confirmação, pelo menos uma vez."],
+      ["retain", "o broker guarda o último estado e entrega na hora a quem conectar depois."], ["Last Will", "cada ESP32 deixa um offline com o broker; se cair, o broker publica por ele."]];
+    corpo = `<div class="conc">${it.map(([a, b], i) => `<div style="opacity:${E(u, 20.8 + i * 1.2, 21.4 + i * 1.2).toFixed(2)}"><b>${a}</b>${b}</div>`).join("")}</div>`;
+  }
+  return `<div class="pk">Item 9 · publicar × assinar</div><div class="pt">O broker no meio de tudo</div><div class="passos">${nomes.map((x, i) => `<div class="${i === passo ? "on" : ""}">${x}</div>`).join("")}</div>${corpo}<div class="rodape">${RODAPE}</div>`;
+}
+
+// posição do grafo: centrado na arquitetura, à esquerda no resto
+const GRAFO_PARTES = ["arquitetura", "pubsub", "int-vagas", "int-lotado", "int-evasao", "int-travada", "int-pagamento", "int-emergencia", "int-ajuda", "int-queda"];
+function desenharGrafo(t, p, u) {
+  const g = $("grafo"), dentro = GRAFO_PARTES.includes(p.id);
+  if (!dentro) { aparece(g, 0); aparece($("painel"), 0); return; }
+  const a0 = P("arquitetura"), aN = P("int-queda");
+  const alfa = Math.min(E(t, a0.ini, a0.ini + 0.8), 1 - pr(t, aN.ini + aN.dur - 0.5, aN.ini + aN.dur));
+  let x = 60, y = 186;
+  if (p.id === "arquitetura") { x = 400; y = 164; }
+  if (p.id === "pubsub") { const k = eio(pr(u, 0, 1.4)); x = lerp(400, 60, k); y = lerp(164, 186, k); }
+  css(g, "opacity", alfa.toFixed(3)); css(g, "visibility", alfa > 0.002 ? "visible" : "hidden");
+  css(g, "transform", `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`);
+  // construção na arquitetura: cartões caem, fios se desenham
+  const arq = p.id === "arquitetura";
+  const nos = [["no-cps1", 0.5], ["no-cps2", 0.8], ["no-cps3", 1.1], ["no-broker", 2.2], ["no-dash", 3.2]];
+  for (const [id, at] of nos) aparece($(id), arq ? E(u, at, at + 0.8) : 1, -30);
+  ["cps1", "cps2", "cps3", "dash"].forEach((n, i) => {
+    const k = arq ? E(u, 2.8 + i * 0.35, 3.6 + i * 0.35) : 1;
+    attr(FIO[n].el, "stroke-dashoffset", (FIO[n].len * (1 - k)).toFixed(1));
+    attr(portas[i], "opacity", (arq ? E(u, 4.2, 5) : 1).toFixed(2));
+  });
+  const c = CENAS[p.id];
+  const s = u;
+  const Lc = L(c.kf, s);
+  const st = replay(Lc);
+  desenharGemeos(st, t, Lc);
+  POOL.forEach(q => attr(q.g, "display", "none"));
+  const r = desenharPulsos(c, s);
+  let n = r.n;
+  if (p.id === "pubsub") {   // assinaturas (anéis subindo)
+    for (const [de, at, tp] of [["cps2", 1.8, "SUBSCRIBE cps1/sensor"], ["cps3", 2.4, "SUBSCRIBE cps1/sensor"], ["dash", 3.0, "SUBSCRIBE cscf/smartpark/#"], ["cps2", 4.2, "SUBSCRIBE cps2/comando"]]) {
+      if (u >= at && u <= at + 0.9 && POOL[n]) pulsoAssinatura(POOL[n++], de, eio(pr(u, at, at + 0.9)), tp);
+    }
+  }
+  // brilho nos nós
+  for (const nn of ["cps1", "cps2", "cps3", "dash"]) {
+    const k = r.chegou[nn] || 0;
+    css($("no-" + nn), "borderColor", k > 0 ? `rgba(139,124,255,${(0.25 + 0.75 * k).toFixed(2)})` : r.saiu[nn] ? "rgba(185,176,255,0.9)" : "var(--borda)");
+    css($("no-" + nn), "boxShadow", k > 0 ? `0 0 ${(40 * k).toFixed(0)}px rgba(139,124,255,${(0.45 * k).toFixed(2)})` : "none");
+  }
+  const rp = r.rota;
+  txt($("rota"), rp ? (rp.pub === "broker" ? `Last Will · ${PREFIXO}${rp.m.topico} = offline → ${rp.subs.map(d => NOME[d]).join(" · ")}` : `${PREFIXO}${rp.m.topico} → ${rp.subs.map(d => NOME[d]).join(" · ")}`) : "recebe e distribui · cscf/smartpark/…");
+  css($("no-broker"), "boxShadow", rp ? "0 0 50px rgba(139,124,255,0.45)" : "0 0 0 rgba(0,0,0,0)");
+  // painel
+  const painel = $("painel");
+  if (p.id === "arquitetura") { aparece(painel, 0); return; }
+  const a = p.id === "pubsub" ? Math.min(E(u, 0.9, 1.6), 1 - pr(u, p.dur - 0.35, p.dur)) : envelope(u, p.dur, 0.45, 0.35);
+  aparece(painel, a, 0, 30);
+  htm(painel, p.id === "pubsub" ? painelPubsub(u, c, s) : painelIntegracao(p, u, c, s, st));
+}
+
+// ======================= cenas estáticas =======================
+$("img-totem").src = FOTOS["puc-totem-vagas"]; $("img-portao").src = FOTOS["puc-portao02"];
+$("img-lotado").src = FOTOS["puc-estac-lotado"]; $("img-aerea").src = FOTOS["puc-aerea"];
+const ETAPAS = [
+  ["Aquisição", "O HC-SR04 sobre a V1 mede 19 cm.", "medir_distancia(trig, echo)"],
+  ["Processamento", "19 &lt; 50 cm: o ESP32 decide que a vaga está ocupada e acende o LED vermelho.", "LIMIAR_OCUPADA_CM = 50"],
+  ["Conectividade", "Publica as vagas no broker; o broker entrega a quem assinou.", "publish(T_SENSOR, …, retain=True)"],
+  ["Atuação", "Em outro ESP32: o totem mostra 3 e pinta a V1 de vermelho; a cancela recalcula a vaga comum.", "fita.write() · tem_vaga(tipo)"],
+  ["Realimentação", "Cada CPS publica o próprio estado com retain, para os outros e para o dashboard.", "publish(T_ESTADO, texto, retain=True)"],
+];
+$("etapas").innerHTML = ETAPAS.map((e, i) => `<div class="etapa" style="left:${i * 369}px"><div class="nn">${i + 1}</div><h3>${e[0]}</h3><p>${e[1]}</p><span class="code">${e[2]}</span></div>`).join("") +
+  `<svg width="1800" height="520" viewBox="0 0 1800 520" id="svg-ciclo"></svg>`;
+const FAIXAS = [["Mundo físico · sensores", 0, 324, "var(--verde)"], ["Mundo digital · processamento e rede", 369, 693, "var(--ac)"], ["Mundo físico · atuadores", 1107, 324, "var(--amarelo)"], ["Realimentação", 1476, 324, "var(--azul)"]];
+$("faixas").innerHTML = FAIXAS.map(f => `<div class="faixa" style="left:${f[1]}px;width:${f[2]}px;color:${f[3]};border-color:${f[3]}">${f[0]}</div>`).join("");
+const svgCiclo = $("svg-ciclo");
+const setas = [];
+for (let i = 0; i < 4; i++) setas.push(mk("path", { d: `M${i * 369 + 328},180 h37`, stroke: "#8b7cff", "stroke-width": 3, fill: "none", "marker-end": "url(#pt)" }, svgCiclo));
+mk("defs", {}, svgCiclo).innerHTML = `<marker id="pt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8b7cff"/></marker>`;
+const volta = mk("path", { d: "M1638,362 C1638,450 1500,440 900,440 C300,440 162,450 162,362", stroke: "#8b7cff", "stroke-width": 3, fill: "none", "stroke-dasharray": "8 8", "marker-end": "url(#pt)" }, svgCiclo);
+const voltaTx = mk("text", { x: 900, y: 426, "text-anchor": "middle", fill: "#b9b0ff", "font-size": 19, "font-weight": 600, "font-family": "Inter, sans-serif" }, svgCiclo);
+voltaTx.textContent = "o estado publicado vira entrada para os outros sistemas";
+const bolinha = mk("circle", { r: 10, fill: "#8b7cff", filter: "url(#brilho2)" }, svgCiclo);
+mk("defs", {}, svgCiclo).innerHTML = `<filter id="brilho2" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+const voltaLen = volta.getTotalLength();
+
+const RESP = [
+  ["Qual é a função do broker e como ele encaminha as mensagens?", "É o intermediário: todos conectam só nele. Cada mensagem que chega num tópico vira uma cópia para cada cliente que assinou esse tópico. Ele também guarda o retido e publica o Last Will."],
+  ["Qual é a diferença entre publicar e assinar?", "Publicar envia para um tópico; assinar pede ao broker o que chegar nele. O CPS1 publica as vagas; o CPS2, o CPS3 e o dashboard assinam. Quem publica não conhece quem assina."],
+  ["Quais tópicos são usados e quem publica e assina?", "Cada CPS tem sensor, estado, comando e status; o CPS2 tem alarme; e há o pagamento: 14 tópicos sob cscf/smartpark/, na tabela de docs/topicos.md."],
+  ["Como uma mensagem de um sistema chega aos demais?", "O CPS1 publica cps1/sensor, o broker repassa, e o callback do CPS2 (lotado, evasão) e do CPS3 (display e fita) recebe o JSON. O dashboard também."],
+  ["Como a informação da rede aciona um atuador?", "O callback lê o JSON e atualiza o estado; o loop decide. Ex.: o CPS2 só gira o servo se há vaga do tipo da placa; o CPS3 acende a fita com as cores das vagas."],
+  ["Como o dashboard participa da comunicação MQTT?", "É mais um cliente do broker, pelo WebSocket (WSS 8884): assina os tópicos para mostrar tudo e publica nos tópicos comando e pagamento. Não fala direto com nenhum ESP32."],
+  ["Quais as vantagens do MQTT em CPS distribuídos?", "Leve para microcontrolador, desacopla quem publica de quem assina, QoS para o que não pode se perder, retain para o estado atual e Last Will para detectar queda."],
+];
+$("lista-resp").innerHTML = RESP.map((r, i) => `<div class="resp"><div class="nn">${i + 1}</div><div><div class="q">${esc(r[0])}</div><div class="a">${esc(r[1])}</div></div></div>`).join("");
+const STATS = [[3, "ESP32"], [1, "broker"], [1, "dashboard"], [14, "tópicos"], [8, "integrações"]];
+$("stats").innerHTML = STATS.map(s => `<div class="stat"><b>0</b><span>${s[1]}</span></div>`).join("");
+$("equipe").textContent = `${EQUIPE} · PUCPR · Conectividade em Sistemas Ciberfísicos · 2026.2`;
+$("hud-barra").innerHTML = PARTES.map(p => `<div style="flex:${p.dur}"><i></i></div>`).join("");
+
+// ======================= 3D (Three.js + OpenStreetMap) =======================
+let GL = null;
+function iniciar3D() {
+  const renderer = new THREE.WebGLRenderer({ canvas: $("gl"), antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1); renderer.setSize(1920, 1080, false);
+  const cena = new THREE.Scene();
+  cena.background = new THREE.Color(0x07090d);
+  cena.fog = new THREE.Fog(0x07090d, 900, 2600);
+  const cam = new THREE.PerspectiveCamera(38, 1920 / 1080, 1, 6000);
+  cena.add(new THREE.HemisphereLight(0xc8d4ff, 0x080a10, 1.15));
+  const sol = new THREE.DirectionalLight(0xffffff, 1.1); sol.position.set(-500, 900, 400); cena.add(sol);
+  const chao = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x0b0e14, roughness: 1 }));
+  chao.rotation.x = -Math.PI / 2; cena.add(chao);
+  const grade = new THREE.GridHelper(4000, 100, 0x161c27, 0x11161f); grade.position.y = 0.2; cena.add(grade);
+  const v3 = (p, y) => new THREE.Vector3(p[0], y, -p[1]);
+  // contorno do câmpus
+  const campusG = new THREE.BufferGeometry().setFromPoints(OSM.campus.map(p => v3(p, 1)));
+  const campusL = new THREE.Line(campusG, new THREE.LineBasicMaterial({ color: 0x8b7cff, transparent: true, opacity: 0.0 }));
+  cena.add(campusL);
+  // ruas
+  const ruaPts = [];
+  for (const r of OSM.ruas) for (let i = 1; i < r.p.length; i++) ruaPts.push(v3(r.p[i - 1], 0.6), v3(r.p[i], 0.6));
+  const ruas = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ruaPts), new THREE.LineBasicMaterial({ color: 0x3a4458, transparent: true, opacity: 0.0 }));
+  cena.add(ruas);
+  // bolsões de estacionamento
+  const matVaga = new THREE.MeshBasicMaterial({ color: 0x8b7cff, transparent: true, opacity: 0.0, side: THREE.DoubleSide, depthWrite: false });
+  for (const v of OSM.vagas) {
+    const sh = new THREE.Shape(v.p.map(p => new THREE.Vector2(p[0], p[1])));
+    const g = new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI / 2); g.translate(0, 0.8, 0);
+    cena.add(new THREE.Mesh(g, matVaga));
+  }
+  // prédios
+  const matPredio = new THREE.MeshStandardMaterial({ color: 0x2c3650, roughness: 0.85, metalness: 0.05 });
+  const matBorda = new THREE.LineBasicMaterial({ color: 0x7380a8, transparent: true, opacity: 0.6 });
+  const predios = [];
+  for (const b of OSM.predios) {
+    if (b.p.length < 4) continue;
+    const sh = new THREE.Shape(b.p.map(p => new THREE.Vector2(p[0], p[1])));
+    const g = new THREE.ExtrudeGeometry(sh, { depth: b.h, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, matPredio);
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), matBorda);
+    const grupo = new THREE.Group(); grupo.add(m); grupo.add(e); cena.add(grupo);
+    const cx = b.p.reduce((a, p) => a + p[0], 0) / b.p.length, cy = b.p.reduce((a, p) => a + p[1], 0) / b.p.length;
+    predios.push({ grupo, d: Math.hypot(cx, cy) });
+  }
+  const nomeados = OSM.vagas.filter(v => /^E\s?\d/.test(v.n));
+  const alvo = (OSM.vagas.find(v => v.n === "E 11") || nomeados[0] || OSM.vagas[0]).c;
+  // pinos (DOM) projetados da posição 3D
+  $("pinos").innerHTML = nomeados.map(v => `<div class="pino"><b>Bolsão ${esc(v.n.replace(/\s+/, " "))}</b><i></i></div>`).join("");
+  const pinos = [...document.querySelectorAll("#pinos .pino")].map((el, i) => ({ el, pos: v3(nomeados[i].c, 4) }));
+  GL = { renderer, cena, cam, predios, matVaga, campusL, ruas, alvo: v3(alvo, 0), pinos };
+}
+function desenhar3D(u, dur) {
+  const { renderer, cena, cam, predios, matVaga, campusL, ruas, alvo, pinos } = GL;
+  // câmera: órbita alta (0–10 s), voo até o bolsão (10–19 s), deriva lenta
+  const orb = a => new THREE.Vector3(Math.cos(a) * 1000, 700, Math.sin(a) * 1000);
+  const centro = new THREE.Vector3(0, 0, 0);
+  const fim = alvo.clone().add(new THREE.Vector3(-300, 250, 360));
+  let pos, olha;
+  if (u < 10) { pos = orb(lerp(0.35, 1.05, u / 10)); olha = centro.clone(); }
+  else {
+    const k = eio(pr(u, 10, 19));
+    const a = orb(1.05);
+    pos = a.clone().lerp(fim, k);
+    pos.y += Math.sin(k * Math.PI) * 120;
+    olha = centro.clone().lerp(alvo, k);
+    if (u > 19) pos.add(new THREE.Vector3((u - 19) * 9, -(u - 19) * 4, 0));
+  }
+  cam.position.copy(pos); cam.lookAt(olha);
+  for (const p of predios) { const k = E(u, 0.3 + p.d / 700, 1.5 + p.d / 700); p.grupo.scale.set(1, Math.max(0.001, k), 1); }
+  campusL.material.opacity = 0.9 * E(u, 1, 3);
+  ruas.material.opacity = 0.7 * E(u, 0.5, 2.5);
+  matVaga.opacity = lerp(0.12, 0.55, E(u, 10, 14)) * E(u, 0.8, 2.4) + 0.08 * Math.sin(u * 3) * pr(u, 14, 15);
+  renderer.render(cena, cam);
+  for (const p of pinos) {
+    const v = p.pos.clone().project(cam);
+    const x = (v.x + 1) / 2 * 1920, y = (1 - v.y) / 2 * 1080, a = E(u, 13.5, 15) * (v.z < 1 ? 1 : 0) * (1 - pr(u, dur - 0.6, dur));
+    css(p.el, "left", x.toFixed(1) + "px"); css(p.el, "top", y.toFixed(1) + "px"); css(p.el, "opacity", a.toFixed(3));
+  }
+}
+
+// ======================= renderAt(t): o quadro inteiro é função de t =======================
+const CENAS_DOM = ["abertura", "problema", "origem", "arquitetura", "ciclo", "respostas", "fechamento"];
+function renderAt(t) {
+  t = clamp(t, 0, TOTAL - 1e-6);
+  const p = parteEm(t), u = t - p.ini;
+  for (const id of CENAS_DOM) { const el = $(id); if (id !== p.id) { css(el, "visibility", "hidden"); css(el, "opacity", "0"); } }
+  const cena = $(p.id);
+  if (cena) { const a = p.id === "arquitetura" ? E(u, 0, 0.6) : envelope(u, p.dur); css(cena, "visibility", a > 0.002 ? "visible" : "hidden"); css(cena, "opacity", a.toFixed(3)); }
+  // 3D só na abertura
+  css($("gl"), "visibility", p.id === "abertura" ? "visible" : "hidden");
+  if (p.id === "abertura") {
+    desenhar3D(u, p.dur);
+    css($("gl"), "opacity", (1 - pr(u, p.dur - 0.8, p.dur)).toFixed(3));
+    const c = $("abertura");
+    aparece(c.querySelector(".titulo"), Math.min(E(u, 1.2, 2.6), 1 - pr(u, 9, 10.2)), 30);
+    aparece(c.querySelector(".local"), Math.min(E(u, 2.5, 3.5), 1 - pr(u, 9, 10)), 0, -20);
+    aparece(c.querySelector(".tag"), Math.min(E(u, 16.5, 18), 1 - pr(u, p.dur - 0.8, p.dur)), 20);
+    aparece(c.querySelector(".osm"), E(u, 1.5, 2.5), 0);
+  }
+  if (p.id === "problema") {
+    const c = $("problema");
+    aparece(c.querySelector(".foto"), E(u, 0.2, 1.2), 0, -40);
+    aparece(c.querySelector(".legenda-foto"), E(u, 0.8, 1.6), 10);
+    aparece(c.querySelector(".cols"), E(u, 0.8, 1.6), 10);
+    c.querySelectorAll(".linha").forEach((l, i) => {
+      const at = [1.2, 7.5, 13.5][i];
+      aparece(l.querySelector(".hoje"), E(u, at, at + 0.8), 0, -30);
+      aparece(l.querySelector(".seta"), E(u, at + 1.2, at + 1.8), 0, -20);
+      aparece(l.querySelector(".novo"), E(u, at + 1.6, at + 2.5), 0, 30);
+    });
+    aparece(c.querySelector(".nota"), E(u, 18, 19), 20);
+  }
+  if (p.id === "origem") {
+    const c = $("origem");
+    c.querySelectorAll(".fotos figure").forEach((f, i) => aparece(f, E(u, 0.4 + i * 0.35, 1.3 + i * 0.35), 40));
+    c.querySelectorAll(".fato").forEach((f, i) => aparece(f, E(u, 2.5 + i * 1.5, 3.3 + i * 1.5), 14));
+    c.querySelectorAll(".reuso").forEach((f, i) => aparece(f, E(u, 9 + i * 1.3, 9.8 + i * 1.3), 0, 40));
+    c.querySelectorAll("#novos .chip").forEach((f, i) => aparece(f, E(u, 17 + i * 0.6, 17.6 + i * 0.6), 16));
+  }
+  if (p.id === "arquitetura") {
+    aparece($("arquitetura").querySelector(".cab"), Math.min(E(u, 0, 0.8), 1 - pr(u, p.dur - 0.4, p.dur)), 16);
+    aparece($("nota-arq"), Math.min(E(u, 13.5, 14.3), 1 - pr(u, p.dur - 0.5, p.dur)), 10);
+  }
+  desenharGrafo(t, p, u);
+  if (p.id === "ciclo") {
+    const c = $("ciclo");
+    c.querySelectorAll(".faixa").forEach((f, i) => aparece(f, E(u, 0.5 + [0, 1.8, 7, 12][i], 1.3 + [0, 1.8, 7, 12][i]), 10));
+    const ats = [0.6, 4.2, 8.2, 11.6, 15.2];
+    c.querySelectorAll(".etapa").forEach((e, i) => {
+      aparece(e, E(u, ats[i], ats[i] + 0.9), 40);
+      const ativa = u >= ats[i] && (i === 4 ? u < 19 : u < ats[i + 1]);
+      css(e, "borderColor", ativa ? "rgba(139,124,255,0.75)" : "var(--borda)");
+      css(e, "boxShadow", ativa ? "0 0 40px rgba(139,124,255,0.25)" : "none");
+    });
+    setas.forEach((s, i) => attr(s, "opacity", E(u, ats[i + 1] - 0.4, ats[i + 1]).toFixed(2)));
+    const kv = E(u, 17, 18.6);
+    attr(volta, "stroke-dashoffset", "0"); attr(volta, "opacity", kv.toFixed(2)); attr(voltaTx, "opacity", kv.toFixed(2));
+    const kb = pr(u, 18.6, 21.4);
+    const pt = volta.getPointAtLength(voltaLen * eio(kb));
+    aparece(c.querySelector(".citacao"), E(u, 19, 20.2), 16);
+    attr(bolinha, "cx", pt.x.toFixed(1)); attr(bolinha, "cy", pt.y.toFixed(1)); attr(bolinha, "opacity", (kb > 0 && kb < 1 ? 1 : 0).toString());
+  }
+  if (p.id === "respostas") {
+    const c = $("respostas"), passo = 4.6;
+    c.querySelectorAll(".resp").forEach((r, i) => {
+      const at = 1 + i * passo;
+      aparece(r, E(u, at - 0.6, at + 0.2), 0, 40);
+      r.classList.toggle("on", u >= at && u < at + passo && i < 7);
+    });
+  }
+  if (p.id === "fechamento") {
+    const c = $("fechamento");
+    aparece(c.querySelector(".nome"), E(u, 0.2, 1.4), 30);
+    c.querySelectorAll(".stat").forEach((s, i) => {
+      aparece(s, E(u, 1.4 + i * 0.3, 2.2 + i * 0.3), 30);
+      txt(s.querySelector("b"), String(Math.round(STATS[i][0] * E(u, 1.6 + i * 0.3, 3 + i * 0.3))));
+    });
+    aparece(c.querySelector(".mqtt"), E(u, 4.5, 5.5), 16);
+    aparece(c.querySelector(".equipe"), E(u, 6, 7), 10);
+  }
+  // HUD
+  const hudOn = p.id === "abertura" ? 0 : p.id === "fechamento" ? 1 - E(u, 0, 0.6) : 1;
+  aparece($("hud-marca"), hudOn, 0); aparece($("hud-parte"), hudOn, 0);
+  htm($("hud-parte"), `<b>${String(p.i + 1).padStart(2, "0")}</b> / ${PARTES.length} · ${esc(p.titulo)}`);
+  css($("hud-barra"), "opacity", (p.id === "abertura" ? E(u, p.dur - 1, p.dur) : 1).toFixed(2));
+  const barras = $("hud-barra").children;
+  PARTES.forEach((q, i) => css(barras[i].firstChild, "width", (clamp((t - q.ini) / q.dur) * 100).toFixed(2) + "%"));
+}
+window.renderAt = renderAt;
+window.PARTES = PARTES;
+window.TOTAL = TOTAL;
+
+// ======================= início: fontes e 3D prontos =======================
+const params = new URLSearchParams(location.search);
+const RENDER = params.has("render");
+document.body.classList.add(RENDER ? "render" : "preview");
+function escalar() {
+  if (RENDER) { $("palco").style.transform = "none"; return; }
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $("palco").style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+}
+addEventListener("resize", escalar); escalar();
+window.pronto = false;
+(async () => {
+  const pesos = ["400", "500", "600", "700", "800"];
+  await Promise.all([...pesos.map(w => document.fonts.load(`${w} 20px Inter`)), document.fonts.load("400 16px 'JetBrains Mono'"), document.fonts.load("600 16px 'JetBrains Mono'")]);
+  await document.fonts.ready;
+  await Promise.all([...document.images].map(i => i.decode().catch(() => {})));
+  iniciar3D();
+  renderAt(0);
+  window.pronto = true;
+  if (!RENDER) previa();
+})();
+
+// ======================= prévia: relógio virtual, teclas e notas =======================
+function previa() {
+  let relogio = 0, tocando = false, comecou = false, ultimo = null;
+  const alvo = Number(params.get("parte") || 0);
+  if (alvo > 0 && PARTES[alvo]) relogio = PARTES[alvo].ini;
+  let janela = null, parteNotas = -1, pausaNotas = null;
+  // o relógio anda pelo performance.now(), não pela contagem de quadros
+  function sync() {
+    const agora = performance.now();
+    if (tocando && ultimo !== null) relogio = Math.min(TOTAL, relogio + (agora - ultimo) / 1000);
+    ultimo = agora;
+    if (relogio >= TOTAL) tocando = false;
+  }
+  function quadro() {
+    sync();
+    renderAt(relogio);
+    const p = parteEm(relogio);
+    if (p.i !== parteNotas || pausaNotas !== tocando) { parteNotas = p.i; pausaNotas = tocando; desenharNotas(); }
+    requestAnimationFrame(quadro);
+  }
+  requestAnimationFrame(quadro);
+  function comecar() { if (comecou) return; comecou = true; tocando = true; ultimo = performance.now(); $("inicio").style.display = "none"; }
+  function pausar() { if (!comecou) return comecar(); sync(); tocando = !tocando; mostrar(); desenharNotas(); }
+  function ir(i) { i = clamp(i, 0, PARTES.length - 1); relogio = PARTES[i].ini; ultimo = performance.now(); if (!comecou) comecar(); renderAt(relogio); desenharNotas(); }
+  function voltar() { sync(); const p = parteEm(relogio); ir(relogio - p.ini > 2 ? p.i : p.i - 1); }
+  function avancar() { sync(); ir(parteEm(relogio).i + 1); }
+  function desenharNotas() {
+    if (!janela || janela.closed) return;
+    const p = parteEm(relogio), f = FOLHAS[p.i], prox = FOLHAS[p.i + 1];
+    const li = xs => xs.map(x => `<li>${esc(x)}</li>`).join("");
+    janela.document.body.innerHTML = `<div class="topo">Folha ${p.i + 1} de ${FOLHAS.length} · ${f.dur} s${tocando ? "" : " · <b>pausado</b>"}</div>
+      <h1>${esc(f.titulo)}</h1><p class="tela">${esc(f.tela)}</p>
+      <h2>Falar</h2><ul>${li(f.falar)}</ul><h2>Mais para falar</h2><ul class="mais">${li(f.mais)}</ul>
+      <h2>Se perguntarem</h2><p class="perg"><b>${esc(f.pergunta[0])}</b><br>${esc(f.pergunta[1])}</p>
+      <div class="prox">${prox ? "Próxima: " + esc(prox.titulo) : "Fim"}</div>`;
+  }
+  function abrirNotas() {
+    janela = window.open("", "notasSmartPark", "width=760,height=980");
+    if (!janela) return;
+    janela.document.head.innerHTML = `<title>Notas · SmartPark 2.0</title><style>
+      body { margin: 0; padding: 28px 34px; background: #0d1118; color: #edf1f7; font: 21px/1.5 Inter, -apple-system, sans-serif; }
+      .topo { color: #8b95a7; font-size: 15px; } .topo b { color: #f5c542; }
+      h1 { margin: 4px 0 6px; font-size: 32px; } h2 { margin: 22px 0 6px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #b9b0ff; }
+      .tela { color: #a1a9b8; font-size: 17px; margin: 0; } ul { margin: 0; padding-left: 22px; } li { margin: 6px 0; }
+      .mais li { color: #c9cfdb; } .perg { background: #151a23; border-left: 4px solid #8b7cff; padding: 10px 14px; border-radius: 6px; margin: 0; }
+      .prox { margin-top: 26px; color: #8b95a7; font-size: 16px; }</style>`;
+    janela.document.onkeydown = teclas;
+    desenharNotas();
+  }
+  let timer;
+  function mostrar() { $("controles").classList.add("on"); clearTimeout(timer); timer = setTimeout(() => $("controles").classList.remove("on"), 2000); }
+  function teclas(e) {
+    if (e.code === "Space") { e.preventDefault(); pausar(); }
+    else if (e.key === "ArrowLeft") voltar();
+    else if (e.key === "ArrowRight") avancar();
+    else if (e.key === "r" || e.key === "R") { relogio = 0; ultimo = performance.now(); if (!comecou) comecar(); tocando = true; renderAt(0); desenharNotas(); }
+    else if (e.key === "n" || e.key === "N") abrirNotas();
+  }
+  addEventListener("keydown", teclas);
+  addEventListener("mousemove", mostrar);
+  window.relogioPrevia = () => { sync(); return relogio; };
+  $("inicio").addEventListener("click", comecar);
+  if (params.has("auto")) comecar();
+}
+</script>
+</body>
+</html>
