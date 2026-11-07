@@ -27,6 +27,25 @@ Nomes no dashboard (`dashboard/index.html`): abas **Operador**, **Pagar pelo cel
 
 Como mexer no Wokwi durante a simulação: clicar no HC-SR04 abre o controle deslizante de distância; clicar na chave deslizante muda o lado; clicar no botão aperta; clicar no PIR mostra "Simulate motion".
 
+## Narração gravada (06/11/2026)
+
+A narração inteira foi gravada num arquivo só e cortada por cena em `video/gravacoes/fala01.m4a` … `fala12.m4a` (fora do git). Grave cada cena de tela com **pelo menos** a duração da fala; o `montar.sh` congela o último quadro se o vídeo for mais curto.
+
+| Cena | Fala gravada | Regravar? |
+|---|---|---|
+| 01 | 33,9 s | não |
+| 02 | 30,8 s | não |
+| 03 | 30,5 s | não |
+| 04 | 23,5 s | não |
+| 05 | 22,6 s | não |
+| 06 | 20,9 s | não |
+| 07 | 26,4 s | **sim**: a gravação diz que o QoS 1 "não pode se perder"; o texto novo explica que o broker confirma e entrega ao CPS2 conectado |
+| 08 | 16,7 s | **sim**: a gravação diz "o autodiagnóstico que a cancela de hoje não tem", que a pesquisa não confirma |
+| 09 | 15,1 s | não |
+| 10 | 26,9 s | recomendado: falta o bip do CPS2 quando o totem pede ajuda (o totem mudando outro ESP32) |
+| 11 | 18,1 s | recomendado: falta a cancela esquecendo as vagas velhas quando o CPS1 cai |
+| 12 | 52,8 s | não |
+
 ## Cena 01 · Os três ESP32 no ar
 
 - **Na tela:** as três janelas do Wokwi rodando e o dashboard. No dashboard, o painel de status com CPS1, CPS2 e CPS3 `online`.
@@ -127,7 +146,7 @@ Como mexer no Wokwi durante a simulação: clicar no HC-SR04 abre o controle des
 - **Atenção:** os 3 s contam a partir da ordem de fechar. Se a chave for movida muito depois da cancela fechar, o alarme sai na hora (o código compara com o instante em que mandou fechar).
 - **Duração:** 25 s.
 - **Fala:**
-  > "O operador abre a cancela pelo dashboard: outro acionamento remoto. Quando ela fecha, o fim de curso continua dizendo aberta. Depois de três segundos sem confirmação, o CPS2 toca o buzzer e publica cancela travada. O totem e o dashboard assinam o alarme. É o autodiagnóstico que a cancela de hoje não tem."
+  > "O operador abre a cancela pelo dashboard: outro acionamento remoto. Quando ela fecha, o fim de curso continua dizendo aberta. Depois de três segundos sem confirmação, o CPS2 toca o buzzer e publica cancela travada. O totem e o dashboard assinam o alarme. É o autodiagnóstico: a própria cancela avisa que não fechou."
 
 ## Cena 09 · Emergência pelo dashboard
 
@@ -144,24 +163,24 @@ Como mexer no Wokwi durante a simulação: clicar no HC-SR04 abre o controle des
 
 - **Na tela:** CPS3 (botão de ajuda e LED azul), CPS1 e o dashboard (alarmes e botões do operador).
 - **Ações:**
-  1. CPS3: apertar o botão **Ajuda (interfone)**. Mostrar o LED azul piscando e o chamado no dashboard.
+  1. CPS3: apertar o botão **Ajuda (interfone)**. Mostrar o LED azul piscando, o bip curto no buzzer do CPS2 e o chamado no dashboard.
   2. Dashboard: clicar em **Atender ajuda** (ou **Atender** no painel Alarmes). Mostrar o LED azul aceso (fica 10 s).
   3. Dashboard, cartão CPS1 Vagas: **Interditar** na V3. Mostrar o LED da V3 piscando no CPS1, a V3 laranja na fita do totem e o número de livres caindo.
   4. Dashboard: **Liberar** na V3.
 - **Duração:** 30 s.
 - **Fala:**
-  > "O motorista aperta ajuda no totem. O CPS3 publica em cps3/sensor e o LED azul pisca enquanto espera. O operador vê o chamado e clica em atender: o dashboard publica em cps3/comando e o LED azul fica aceso. Do mesmo jeito, o operador interdita uma vaga: o CPS1 recebe o comando, pisca o LED e tira a vaga da conta, e o totem mostra a vaga em laranja. Comandos vão com QoS 1 e sem retain, para não serem executados de novo quando o ESP32 reconecta."
+  > "O motorista aperta ajuda no totem. O CPS3 publica em cps3/sensor e o LED azul pisca enquanto espera. O CPS2 assina esse tópico e dá um bip na cancela, onde fica o operador: é o totem mudando outro ESP32. O operador vê o chamado e clica em atender: o dashboard publica em cps3/comando e o LED azul fica aceso. Do mesmo jeito, o operador interdita uma vaga: o CPS1 recebe o comando, pisca o LED e tira a vaga da conta, e o totem mostra a vaga em laranja. Comandos vão com QoS 1 e sem retain, para não serem executados de novo quando o ESP32 reconecta."
 
 ## Cena 11 · Queda do CPS1 e Last Will
 
 - **Na tela:** CPS1, CPS3 e o status no dashboard.
 - **Ações:**
   1. CPS1: parar a simulação (botão de stop do Wokwi).
-  2. Esperar o dashboard mostrar CPS1 `offline` e o totem mostrar `----` com a fita piscando em laranja. Se demorar, cortar a espera na edição (não verificado no Wokwi quanto tempo o broker leva: no teste local foi menos de 1 s; no pior caso, 1,5 × o keepalive de 30 s = 45 s).
+  2. Esperar o dashboard mostrar CPS1 `offline` e o totem mostrar `----` com a fita piscando em laranja (no cartão CPS2, a cancela deixa de usar as vagas velhas). Se demorar, cortar a espera na edição (não verificado no Wokwi quanto tempo o broker leva: no teste local foi menos de 1 s; no pior caso, 1,5 × o keepalive de 30 s = 45 s).
   3. CPS1: dar play de novo. Mostrar `online` e o número voltando no totem.
 - **Duração:** 30 s.
 - **Fala:**
-  > "Agora o CPS1 cai sem avisar. Quem publica o offline é o broker, com o Last Will que o CPS1 deixou ao conectar. O totem assina esse status: em vez de mostrar um número velho, mostra quatro traços e pisca a fita em laranja. Quando o CPS1 volta, ele reconecta, publica online e as vagas, e o totem volta ao número."
+  > "Agora o CPS1 cai sem avisar. Quem publica o offline é o broker, com o Last Will que o CPS1 deixou ao conectar. O totem e a cancela assinam esse status: o totem, em vez de mostrar um número velho, mostra quatro traços e pisca a fita em laranja, e a cancela esquece as vagas velhas e para de negar por lotado. Quando o CPS1 volta, ele reconecta, publica online e as vagas, e o totem volta ao número."
 
 ## Cena 12 · As mensagens e o item 9
 
