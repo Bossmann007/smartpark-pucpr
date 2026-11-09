@@ -13,7 +13,7 @@ Projeto final de Conectividade em Sistemas Ciberfísicos (PUCPR, 2026.2). Evolu�
 - Wokwi CPS1 Vagas: https://wokwi.com/projects/480003924044144641
 - Wokwi CPS2 Cancela: https://wokwi.com/projects/480004498194137089
 - Wokwi CPS3 Totem: https://wokwi.com/projects/480004853605879809
-- Vídeo da demonstração: LINK_DO_VIDEO
+- Vídeo da demonstração: https://youtu.be/EEVO-9NKvvE
 
 ## Os três sistemas
 
