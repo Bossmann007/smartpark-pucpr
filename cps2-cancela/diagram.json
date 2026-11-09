@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "author": "Equipe 3 (Enzo Bossmann, Diego Feltrin, Gabriel Henrique) — SmartPark 2.0 · CPS2 Cancela",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 250,
+      "left": 330,
+      "attrs": {
+        "env": "micropython-20231227-v1.22.0"
+      }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "us",
+      "top": -60,
+      "left": 80,
+      "attrs": {
+        "distance": "400"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "bt1",
+      "top": 80,
+      "left": -150,
+      "attrs": {
+        "color": "green",
+        "label": "Câmera: ABC1D23",
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "bt2",
+      "top": 160,
+      "left": -150,
+      "attrs": {
+        "color": "yellow",
+        "label": "Câmera: BRA2E19",
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "bt3",
+      "top": 240,
+      "left": -150,
+      "attrs": {
+        "color": "blue",
+        "label": "Câmera: PUC0R26",
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "sentido",
+      "top": 340,
+      "left": -120,
+      "attrs": {
+        "label": "Sentido: esq. entrada / dir. saída"
+      }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "fim",
+      "top": 420,
+      "left": -120,
+      "attrs": {
+        "label": "Fim de curso: esq. fechada / dir. aberta"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo",
+      "top": 40,
+      "left": 600,
+      "attrs": {
+        "horn": "single"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz",
+      "top": 300,
+      "left": 640,
+      "attrs": {
+        "volume": "0.5"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "esp:TX0",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX0",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "us:VCC",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "us:GND",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "us:TRIG",
+      "esp:D5",
+      "orange",
+      []
+    ],
+    [
+      "us:ECHO",
+      "esp:D18",
+      "purple",
+      []
+    ],
+    [
+      "bt1:1.l",
+      "esp:D13",
+      "green",
+      []
+    ],
+    [
+      "bt1:2.l",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "bt2:1.l",
+      "esp:D14",
+      "green",
+      []
+    ],
+    [
+      "bt2:2.l",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "bt3:1.l",
+      "esp:D27",
+      "green",
+      []
+    ],
+    [
+      "bt3:2.l",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "sentido:2",
+      "esp:D26",
+      "blue",
+      []
+    ],
+    [
+      "sentido:1",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "fim:2",
+      "esp:D25",
+      "blue",
+      []
+    ],
+    [
+      "fim:1",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "servo:PWM",
+      "esp:D4",
+      "orange",
+      []
+    ],
+    [
+      "servo:V+",
+      "esp:VIN",
+      "red",
+      []
+    ],
+    [
+      "servo:GND",
+      "esp:GND.1",
+      "black",
+      []
+    ],
+    [
+      "bz:2",
+      "esp:D23",
+      "red",
+      []
+    ],
+    [
+      "bz:1",
+      "esp:GND.1",
+      "black",
+      []
+    ]
+  ],
+  "serialMonitor": {
+    "display": "auto"
+  }
+}

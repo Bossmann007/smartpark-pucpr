@@ -1,314 +1,67 @@
-<!-- ENZO-PORTFOLIO-BRAND -->
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111111,100:CA8A04&height=165&section=header&text=SmartPark%20PUCPR&fontSize=42&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Smart%20parking%20monitoring%20for%20a%20cyber-physical%20systems%20course.&descAlignY=57&descSize=14" alt="SmartPark PUCPR" />
-</p>
+# SmartPark 2.0 · PUCPR
 
-<p align="center"><strong>ESP32 · MicroPython · MQTT</strong></p>
+Estacionamento sem parar na cancela: cada vaga é medida, a câmera lê a placa e a cancela avisa quando falha. Três sistemas ciberfísicos (ESP32 + MicroPython no Wokwi) que só conversam por MQTT, mais um dashboard web.
 
----
+Projeto final de Conectividade em Sistemas Ciberfísicos (PUCPR, 2026.2). Evolução do SmartPark de Fundamentos de Sistemas Ciberfísicos (2026.1), que está em [`Old/`](Old/); o que foi reaproveitado está em [`docs/reuso.md`](docs/reuso.md).
 
-<div align="center">
+- Equipe 3: Enzo Bossmann, Diego Feltrin e Gabriel Henrique
+- Identificador nos tópicos: `equipe03` (prefixo `cscf/equipe03`, constante `PREFIXO` em cada `main.py`)
+- Entrega: 09/11/2026, 10:00
 
-# 🅿️ SmartPark PUC
+## Links
 
-**Monitoramento inteligente de vagas de estacionamento**  
-ESP32 · MicroPython · MQTT · Processing · Wokwi
+- Wokwi CPS1 Vagas: https://wokwi.com/projects/480003924044144641
+- Wokwi CPS2 Cancela: https://wokwi.com/projects/480004498194137089
+- Wokwi CPS3 Totem: https://wokwi.com/projects/480004853605879809
+- Vídeo da demonstração: https://youtu.be/EEVO-9NKvvE
 
-[![Wokwi](https://img.shields.io/badge/Simulação-Wokwi-green?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyeiIvPjwvc3ZnPg==&style=for-the-badge)](https://wokwi.com/projects/465089138268468225)
-[![MicroPython](https://img.shields.io/badge/MicroPython-v1.22-blue?style=for-the-badge&logo=python&logoColor=white)](https://micropython.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-[![PUCPR](https://img.shields.io/badge/PUCPR-2026.1-red?style=for-the-badge)](https://www.pucpr.br/)
+## Os três sistemas
 
----
+| Sistema | Sensores | Atuadores | Publica | Assina |
+|---|---|---|---|---|
+| [CPS1 Vagas](cps1-vagas/) | 4× HC-SR04 (V1, V2 comuns, V3 idoso, V4 PcD) | LED verde/vermelho por vaga | vagas livres por tipo | comandos, emergência do CPS2 |
+| [CPS2 Cancela](cps2-cancela/) | HC-SR04 (carro na cancela), câmera simulada (botões), chave de sentido, fim de curso | servo (cancela), buzzer | entradas, saídas, negações, alarmes, estado | vagas e status do CPS1, ajuda do CPS3, comandos, pagamento |
+| [CPS3 Totem](cps3-totem/) | botão de ajuda, PIR | display 7 segmentos, LEDs, fita NeoPixel (1 LED por vaga) | ajuda, presença, estado | vagas e status do CPS1, alarmes e modo do CPS2, comandos |
+| [Dashboard](dashboard/) | – | – | comandos, câmera, pagamento | tudo (`cscf/equipe03/#`) |
 
-*Disciplina: Fundamentos de Sistemas Ciberfísicos — PUCPR 2026.1*
+Integrações: vagas → totem (número, fita e LED); lotado → a cancela nega; ajuda no totem → bip na cancela; vagas ocupadas × entradas → alarme de evasão; vaga PcD ocupada sem carro PcD dentro → o totem pisca a vaga e o dashboard avisa; cancela travada → o totem pisca; pagamento pelo celular → a saída abre; emergência → tudo abre e pisca; CPS1 cai → o totem mostra `----` e a cancela para de negar por lotado. Detalhes em [`docs/topicos.md`](docs/topicos.md).
 
-</div>
+![Arquitetura](docs/arquitetura.png)
 
----
+![Fluxos de comunicação](docs/fluxos.png)
 
-## 📌 O Problema
+## Pastas
 
-Os totens da PUC mostram só **"lotado" ou "disponível"** — sem indicar onde exatamente há vaga livre. O motorista entra, percorre o corredor inteiro, não encontra nada e volta com o motor ligado. Resultado: **tempo perdido + CO₂ desnecessário**.
+| Pasta | Conteúdo |
+|---|---|
+| `cps1-vagas/`, `cps2-cancela/`, `cps3-totem/` | `main.py`, `diagram.json` e link do Wokwi de cada sistema |
+| `dashboard/` | dashboard HTML + MQTT.js (operador, gêmeo 3D, câmera simulada, pagar pelo celular) |
+| `docs/` | arquitetura, tópicos, broker, funcionamento, reuso, pesquisa, guia de apresentação |
+| `docs/apresentacao/` | apresentação animada (motion graphics) e folhas do apresentador |
+| `video/` | roteiro da gravação e script de montagem do vídeo |
+| `scripts/` | `verify` (prova por MQTT), CPS falsos, limpeza de retidos |
+| `sim/` | hardware falso para rodar os `main.py` no MicroPython do computador e o teste de integração |
+| `Old/` | SmartPark 2026.1, sem alteração |
+| `SPEC.md` | escopo, regras, checagem de pronto e cortes |
 
-Estudos mostram que até **30% do tráfego urbano** é causado por busca de estacionamento.
+## Como montar no Wokwi
 
-## 💡 A Solução
+1. Em wokwi.com, crie um projeto **ESP32 + MicroPython** para cada sistema.
+2. Substitua o `diagram.json` pelo da pasta do sistema e cole o `main.py`. No CPS3, adicione também o arquivo `tm1637.py`.
+3. Rode os três ao mesmo tempo, **cada um numa janela visível** (aba escondida pausa a simulação).
+4. Sirva o dashboard (`python3 -m http.server 8000 -d dashboard`) e abra http://localhost:8000/ (por `file://` o navegador bloqueia os módulos).
+5. Confira: `scripts/verify` deve terminar com `verify: passou`.
 
-Um sensor HC-SR04 por vaga conectado ao ESP32. Se detectar objeto a menos de 20 cm:
+## Prova de funcionamento
 
-- 🔴 **LED vermelho** → vaga ocupada  
-- 🟢 **LED verde** → vaga livre  
-- 🔊 **Buzzer** → toca quando o estacionamento está totalmente lotado  
-- 📊 **Dashboard** → exibe status em tempo real via MQTT
+- `scripts/verify`: assina o prefixo no broker e só passa (exit 0) se os 3 CPS estão `online`, o CPS1 publica 4 vagas e cada CPS responde a um `ping` no seu tópico de comando. Precisa de [`uv`](https://docs.astral.sh/uv/).
+- `uv run sim/teste_integracao.py`: roda os três `main.py` reais no MicroPython do computador, com hardware falso, contra a HiveMQ, e confere as 9 integrações, a queda pelo Last Will e a reconexão. Última execução (08/11/2026, com o código final): 64 verificações, 0 falhas em 73 s. O `scripts/verify` também passou contra os três Wokwi de verdade (07/11/2026). Precisa de `brew install micropython` e `micropython -m mip install umqtt.simple`.
+- Antes de gravar o vídeo: `uv run scripts/limpar_retidos.py --prefix cscf/equipe03`.
 
-**Custo por vaga: ~R$ 35**
+## Broker
 
----
+HiveMQ público (`broker.hivemq.com`): ESP32 em TCP 1883, dashboard em WebSocket seguro 8884. Last Will, retain e QoS 1 explicados em [`docs/broker.md`](docs/broker.md).
 
-## 🎬 Vídeo de demonstração
+## Privacidade
 
-[![YouTube](https://img.shields.io/badge/Vídeo-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/-ANPHwUVjhA)
-
-🔗 **Vídeo:** [youtu.be/-ANPHwUVjhA](https://youtu.be/-ANPHwUVjhA)  
-🔗 **Simulação ao vivo:** [wokwi.com/projects/465089138268468225](https://wokwi.com/projects/465089138268468225)
-
----
-
-## 🧠 Arquitetura CPS
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     MUNDO FÍSICO                        │
-│   [Veículo]                          [Veículo]          │
-│      ↕                                    ↕             │
-│  HC-SR04 Vaga 1                      HC-SR04 Vaga 2     │
-└──────────┬───────────────────────────────┬──────────────┘
-           │           SENSING             │
-┌──────────▼───────────────────────────────▼──────────────┐
-│                  ESP32 DevKit V1                         │
-│  COMPUTATION: medir_distancia() → atualizar_led() → MQTT │
-│                                                         │
-│  [🟢/🔴 LED Vaga 1]    [🟢/🔴 LED Vaga 2]   ACTUATION  │
-│  [🔊 Buzzer — lotado]                                   │
-│                                                         │
-│  WiFi ──────────────────────────────► MQTT Broker       │
-└─────────────────────────────────────────────────────────┘
-                                          │  COMMUNICATION
-                              ┌───────────▼──────────────┐
-                              │  Dashboard Processing     │
-                              │  (tempo real via MQTT)    │
-                              └──────────────────────────┘
-```
-
-| Camada | Componente | O que faz |
-|--------|-----------|-----------|
-| **Sensing** | HC-SR04 | Mede distância até o carro (mundo físico → digital) |
-| **Computation** | ESP32 + MicroPython | Decide se a vaga está ocupada (dist < 20 cm) |
-| **Communication** | WiFi + MQTT | Envia o estado das vagas pro dashboard |
-| **Actuation** | LED + Buzzer | Sinaliza visualmente e sonoramente |
-
----
-
-## 🗂️ Estrutura do Repositório
-
-```
-smartpark-puc/
-├── main.py                  # Firmware MicroPython (ESP32)
-├── diagram.json             # Circuito Wokwi
-├── relatorio-smartcity.md   # Relatório completo do projeto
-├── slides-smartpark.html    # Slides da apresentação (abrir no browser)
-└── DashboardProcessingimg/  # Screenshots do dashboard Processing
-    ├── VagasLivres.png
-    ├── VagasOcupadas.png
-    ├── Vaga1Ocupada.png
-    └── Vaga2Ocupada.png
-```
-
----
-
-<details>
-<summary><h2>💻 Código</h2></summary>
-
-O firmware está em [`main.py`](main.py) e roda direto no ESP32 com MicroPython.
-
-### Estrutura das funções
-
-| Função | O que faz |
-|--------|-----------|
-| `medir_distancia(trig, echo)` | Dispara pulso ultrassônico e retorna distância em cm |
-| `atualizar_led(ocupada, verde, vermelho)` | Acende o LED correto conforme status da vaga |
-| `apitar()` | Toca o buzzer (PWM 1kHz) por 1 segundo quando o estacionamento lota |
-| `conectar_wifi()` | Conecta ao WiFi com até 10 tentativas, retorna True/False |
-| `conectar_mqtt()` | Cria e conecta o cliente MQTT, retorna o cliente ou None |
-| `main()` | Loop principal: lê sensores → atualiza LEDs/buzzer → publica se mudou |
-
-### Trecho principal
-
-```python
-# LEDs inicializam verde antes de qualquer conexão WiFi
-LED_V1.on();  LED_R1.off()   # Vaga 1: livre
-LED_V2.on();  LED_R2.off()   # Vaga 2: livre
-
-# No loop:
-d1 = medir_distancia(TRIG1, ECHO1)
-ocup1 = d1 < LIMIAR_CM               # True se dist < 20 cm
-atualizar_led(ocup1, LED_V1, LED_R1) # Vermelho se ocupada, verde se livre
-
-lotado = ocup1 and ocup2
-if lotado and not lotado_ant:        # só na transição para lotado
-    apitar()                         # beep de 1 segundo
-```
-
-### Payload MQTT
-
-**Tópicos** (publicados **apenas quando o estado muda**, e assinados pelo dashboard Processing):
-
-| Tópico | Payload | Significado |
-|--------|---------|-------------|
-| `smartpark/puc/vaga1` | `0` ou `1` | 0 = livre · 1 = ocupada |
-| `smartpark/puc/vaga2` | `0` ou `1` | 0 = livre · 1 = ocupada |
-| `smartpark/puc/status` | `{"v1":0,"v2":1}` | estado das duas vagas em JSON |
-
-### Compatibilidade Wokwi
-
-A `umqtt.simple` não está disponível no Wokwi, então o import é feito com `try/except`. O mesmo código roda em simulação (sem MQTT) e em hardware real (com MQTT).
-
-</details>
-
----
-
-<details>
-<summary><h2>⚡ Eletrônica</h2></summary>
-
-### Componentes utilizados
-
-| Componente | Qtd | Descrição |
-|-----------|-----|-----------|
-| ESP32 DevKit V1 | 1 | Microcontrolador principal |
-| HC-SR04 | 2 | Sensor ultrassônico de distância |
-| LED verde 5mm | 2 | Indica vaga livre |
-| LED vermelho 5mm | 2 | Indica vaga ocupada |
-| Resistor 220Ω | 4 | Proteção dos LEDs |
-| Buzzer passivo | 1 | Alerta sonoro de lotação |
-
-### Funcionamento do HC-SR04
-
-O sensor emite um pulso ultrassônico e mede o tempo de retorno do eco:
-
-```
-distância (cm) = (tempo_eco_µs × 0,0343) / 2
-```
-
-- `0,0343` = velocidade do som em cm/µs (343 m/s a 20°C)
-- Divisão por 2 porque o som faz ida e volta
-- Timeout em 30 ms → retorna 999 cm (sem objeto = vaga livre)
-
-### ⚠️ Atenção em hardware real
-
-O pino ECHO do HC-SR04 fornece **5V**, mas o ESP32 suporta apenas **3,3V** nos GPIOs. Em hardware real, use um divisor resistivo:
-
-```
-ECHO ──[1kΩ]──┬── GPIO ESP32
-              [2kΩ]
-              │
-             GND
-```
-
-Na simulação Wokwi isso não é necessário.
-
-</details>
-
----
-
-<details>
-<summary><h2>🔌 Pinagem</h2></summary>
-
-### Sensores HC-SR04
-
-| Pino sensor | ESP32 — Vaga 1 | ESP32 — Vaga 2 |
-|-------------|---------------|---------------|
-| `VCC` | 3V3 | 3V3 |
-| `GND` | GND | GND |
-| `TRIG` | GPIO 5 | GPIO 19 |
-| `ECHO` | GPIO 18 | GPIO 21 |
-
-### LEDs
-
-| LED | GPIO | Resistor | Estado |
-|-----|------|----------|--------|
-| Verde Vaga 1 | GPIO 2 | 220Ω | ON = livre |
-| Vermelho Vaga 1 | GPIO 4 | 220Ω | ON = ocupada |
-| Verde Vaga 2 | GPIO 22 | 220Ω | ON = livre |
-| Vermelho Vaga 2 | GPIO 23 | 220Ω | ON = ocupada |
-
-### Buzzer
-
-| Componente | GPIO | Controle | Quando ativa |
-|-----------|------|----------|-------------|
-| Buzzer passivo | GPIO 25 | PWM 1kHz, 50% duty | Ambas as vagas ocupadas |
-
-### Diagrama de ligação simplificado
-
-```
-ESP32 GPIO 2  ──[220Ω]──[LED Verde  Vaga1]── GND
-ESP32 GPIO 4  ──[220Ω]──[LED Verm.  Vaga1]── GND
-ESP32 GPIO 22 ──[220Ω]──[LED Verde  Vaga2]── GND
-ESP32 GPIO 23 ──[220Ω]──[LED Verm.  Vaga2]── GND
-ESP32 GPIO 25 ──────────[Buzzer          ]── GND
-ESP32 GPIO 5  ──────────[TRIG HC-SR04 V1 ]
-ESP32 GPIO 18 ──────────[ECHO HC-SR04 V1 ]
-ESP32 GPIO 19 ──────────[TRIG HC-SR04 V2 ]
-ESP32 GPIO 21 ──────────[ECHO HC-SR04 V2 ]
-```
-
-</details>
-
----
-
-<details>
-<summary><h2>🖥️ Dashboard Processing</h2></summary>
-
-O dashboard recebe dados via MQTT e exibe o estado das vagas em tempo real.
-
-| Estado | Indicação |
-|--------|-----------|
-| 🟢 Verde | Vaga livre |
-| 🔴 Vermelho | Vaga ocupada |
-
-**Funcionalidades:**
-- Painel lateral com vagas livres, tempo médio de ocupação e total de eventos
-- Contador de CO₂ poupado (cada minuto buscando vaga ≈ 0,03 kg CO₂)
-- Ticker informativo contínuo
-- **Modo demo** — funciona sem ESP32 conectado para demonstrações
-
-### Screenshots
-
-| Vagas Livres | Vagas Ocupadas |
-|:-----------:|:--------------:|
-| ![Vagas Livres](DashboardProcessingimg/VagasLivres.png) | ![Vagas Ocupadas](DashboardProcessingimg/VagasOcupadas.png) |
-| **Vaga 1 Ocupada** | **Vaga 2 Ocupada** |
-| ![Vaga 1 Ocupada](DashboardProcessingimg/Vaga1Ocupada.png) | ![Vaga 2 Ocupada](DashboardProcessingimg/Vaga2Ocupada.png) |
-
-</details>
-
----
-
-<details>
-<summary><h2>🚀 Como rodar no Wokwi</h2></summary>
-
-1. Acesse a simulação: **[wokwi.com/projects/465089138268468225](https://wokwi.com/projects/465089138268468225)**
-2. Clique em **▶ Start Simulation**
-3. Clique em um dos sensores HC-SR04
-4. Arraste o slider de distância para menos de 20 cm → LED vermelho acende
-5. Volte para mais de 20 cm → LED verde acende
-6. Com as duas vagas ocupadas → buzzer toca
-
-</details>
-
----
-
-## 👥 Grupo 1
-
-| Integrante |
-|-----------|
-| Enzo Bossmann |
-| Gabriel Henrique |
-| Diego Feltrin |
-| Daniel Luiz |
-| Luis Henrique |
-
----
-
-<div align="center">
-
-**Fundamentos de Sistemas Ciberfísicos — PUCPR 2026.1**
-
-*Hardware acessível · Arquitetura escalável · Problema real do campus resolvido*
-
-</div>
-
-<!-- ENZO-PORTFOLIO-BRAND-FOOTER -->
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:111111,100:CA8A04&height=85&section=footer" alt="Footer" />
-</p>
+Placas fictícias. No broker público qualquer um pode ler as mensagens; em produção a placa é dado pessoal (LGPD) e iria pseudonimizada, num broker com usuário e TLS.

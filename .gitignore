@@ -27,3 +27,13 @@ Checkup de Codigo*.md
 
 # Pasta de base do Wokwi (arquivos oficiais ficam na raiz)
 Wokiwbase/
+
+# Python/MicroPython
+__pycache__/
+*.pyc
+
+# Simulação local (gerado pelos testes)
+sim/run/
+
+# Configuração local de agentes
+.claude/

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartPark 2.0 | Painel do estacionamento</title>
+<meta name="description" content="Painel MQTT do SmartPark 2.0 (PUCPR, Conectividade em Sistemas Ciberfísicos): vagas, cancela, totem, alarmes e pagamento pelo celular.">
+<meta name="theme-color" content="#f6f7f9">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2315181e%22/%3E%3Ctext x=%2216%22 y=%2223%22 font-family=%22Arial%22 font-weight=%22700%22 font-size=%2219%22 fill=%22white%22 text-anchor=%22middle%22%3EP%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./estilos/index.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Pular para o conteúdo</a>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">P</div>
+    <div><strong>SmartPark 2.0</strong><span>Estacionamento PUCPR</span></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Páginas">
+    <button role="tab" id="tab-operador" data-view="operador" aria-selected="true" aria-controls="view-operador"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span class="lbl">Operador</span></button>
+    <button role="tab" id="tab-pagar" data-view="pagar" aria-selected="false" aria-controls="view-pagar"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg><span class="lbl">Pagar pelo celular</span></button>
+    <button role="tab" id="tab-mapa" data-view="mapa" aria-selected="false" aria-controls="view-mapa"><svg class="i" viewBox="0 0 24 24"><path d="M14.1 5.6a2 2 0 0 0 1.8 0l3.7-1.9A1 1 0 0 1 21 4.6v12.8a1 1 0 0 1-.6.9l-4.5 2.3a2 2 0 0 1-1.8 0l-4.2-2.1a2 2 0 0 0-1.8 0l-3.7 1.8A1 1 0 0 1 3 19.4V6.6a1 1 0 0 1 .6-.9l4.5-2.3a2 2 0 0 1 1.8 0z"/><path d="M15 5.8v15M9 3.2v15"/></svg><span class="lbl">Mapa da PUC</span></button>
+  </nav>
+  <div class="pills" role="group" aria-label="Status dos ESP32 (Last Will)">
+    <span class="pill c-cps1" id="pill-cps1" data-state="nd"><i class="sys-bar" style="background:var(--cps1)"></i><b>CPS1 Vagas</b><span class="pill-st"><i class="dot"></i><span>sem dado</span></span></span>
+    <span class="pill c-cps2" id="pill-cps2" data-state="nd"><i class="sys-bar" style="background:var(--cps2)"></i><b>CPS2 Cancela</b><span class="pill-st"><i class="dot"></i><span>sem dado</span></span></span>
+    <span class="pill c-cps3" id="pill-cps3" data-state="nd"><i class="sys-bar" style="background:var(--cps3)"></i><b>CPS3 Totem</b><span class="pill-st"><i class="dot"></i><span>sem dado</span></span></span>
+  </div>
+  <div class="conn" id="conn" data-state="conectando" role="status" aria-live="polite">
+    <i class="dot"></i><span id="conn-txt">Conectando</span><span class="conn-meta" id="conn-meta"></span>
+  </div>
+</header>
+
+<main id="main">
+<!-- operador -->
+<section class="view op-grid" id="view-operador" role="tabpanel" aria-labelledby="tab-operador">
+  <div class="col-main">
+    <h1 class="sr-only">Painel do operador</h1>
+    <div class="kpis">
+      <div class="kpi kpi-hero">
+        <div>
+          <div class="kpi-l">Vagas livres agora</div>
+          <div class="kpi-v" id="k-livres">–<small></small></div>
+          <div class="tipos" id="k-tipos"></div>
+        </div>
+        <div>
+          <div class="spark" id="spark" aria-hidden="true"><svg id="spark-svg" preserveAspectRatio="none"></svg><div class="tip" id="spark-tip"></div></div>
+          <div class="spark-cap" id="spark-cap">Histórico desta sessão</div>
+        </div>
+      </div>
+      <div class="kpi"><div class="kpi-l">Carros dentro</div><div class="kpi-v" id="k-dentro">–</div><div class="kpi-s" id="k-dentro-s">aguardando CPS2</div></div>
+      <div class="kpi"><div class="kpi-l">Cancela</div><div class="kpi-v" id="k-cancela">–</div><div class="kpi-s" id="k-cancela-s">aguardando CPS2</div></div>
+      <div class="kpi"><div class="kpi-l">Alarmes ativos</div><div class="kpi-v" id="k-alarmes">0</div><div class="kpi-s" id="k-alarmes-s">tudo em ordem</div></div>
+    </div>
+
+    <section class="twin" aria-label="Gêmeo digital 3D do estacionamento">
+      <div id="twin" style="position:absolute;inset:0"></div>
+      <div class="twin-hud"><h2>Gêmeo digital</h2><p>Cada luz é uma mensagem MQTT indo ao broker e aos assinantes</p></div>
+      <div class="twin-tools"><button class="btn btn-sm" id="btn-giro" aria-pressed="true">Pausar giro</button></div>
+      <div class="twin-legend" aria-hidden="true">
+        <span><i class="sw sw-comum"></i>Comum</span><span><i class="sw sw-idoso"></i>Idoso</span><span><i class="sw sw-pcd"></i>PcD</span><span><i class="sw sw-ocupada"></i>Ocupada</span><span><i class="sw sw-interditada"></i>Interditada</span>
+        <span style="color:#3987e5"><i class="pulse-sw"></i><span style="color:#c9d2e3">CPS1</span></span>
+        <span style="color:#d95926"><i class="pulse-sw"></i><span style="color:#c9d2e3">CPS2</span></span>
+        <span style="color:#199e70"><i class="pulse-sw"></i><span style="color:#c9d2e3">CPS3</span></span>
+        <span style="color:#e2e8f0"><i class="pulse-sw"></i><span style="color:#c9d2e3">Dashboard</span></span>
+      </div>
+    </section>
+
+    <div class="cards">
+      <!-- CPS1 -->
+      <section class="panel card c-cps1" aria-labelledby="h-cps1">
+        <div class="panel-h">
+          <div><h2 id="h-cps1" class="sys-tag">CPS1 Vagas</h2><div class="hw">4 sensores HC-SR04 e LEDs bicolor</div></div>
+          <div class="right"><span class="st-dot" id="st-cps1"><i class="dot"></i><span>sem dado</span></span></div>
+        </div>
+        <div class="card-b">
+          <div class="bays" id="bays"><p class="empty">Aguardando <code>cps1/sensor</code>…</p></div>
+          <p class="sublabel">Interditar tira a vaga da contagem; o LED dela pisca no CPS1 e a fita do totem fica laranja.</p>
+        </div>
+      </section>
+
+      <!-- CPS2 -->
+      <section class="panel card c-cps2" aria-labelledby="h-cps2">
+        <div class="panel-h">
+          <div><h2 id="h-cps2" class="sys-tag">CPS2 Cancela</h2><div class="hw">HC-SR04, servo, fim de curso e buzzer</div></div>
+          <div class="right"><span class="st-dot" id="st-cps2"><i class="dot"></i><span>sem dado</span></span></div>
+        </div>
+        <div class="card-b">
+          <div class="gate-row">
+            <svg class="gate-svg" id="gate-svg" viewBox="0 0 132 72" data-aberta="false" role="img" aria-label="Cancela fechada">
+              <defs><pattern id="stripes" width="16" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#dc2626"/><rect x="8" width="8" height="8" fill="#ffffff"/></pattern></defs>
+              <rect x="0" y="68" width="132" height="2" rx="1" fill="#cfd4dc"/>
+              <rect x="12" y="26" width="12" height="42" rx="2" fill="#3d434f"/>
+              <g class="gate-arm"><rect x="18" y="27" width="110" height="7" rx="3.5" fill="url(#stripes)" stroke="#283041" stroke-width="1"/></g>
+              <circle cx="18" cy="18" r="4" id="gate-light" fill="#dc2626"/>
+            </svg>
+            <dl class="facts" id="cps2-facts"></dl>
+          </div>
+          <div class="flags" id="cps2-flags"></div>
+          <div>
+            <div class="sublabel" style="margin-bottom:6px">Placas dentro</div>
+            <div class="plates" id="plates"><span class="empty">Nenhum carro dentro</span></div>
+          </div>
+          <div class="row">
+            <button class="btn" data-acao="abrir" data-k="abrir"><svg class="i" viewBox="0 0 24 24"><path d="M4 21V7"/><path d="M4 9l14-6"/><path d="M2 21h6"/></svg>Abrir cancela</button>
+            <button class="btn btn-danger" id="btn-emerg" data-acao="emergencia" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M12 16h.01M12 8v4"/><path d="M15.3 2a2 2 0 0 1 1.4.6l4.7 4.7a2 2 0 0 1 .6 1.4v6.6a2 2 0 0 1-.6 1.4l-4.7 4.7a2 2 0 0 1-1.4.6H8.7a2 2 0 0 1-1.4-.6l-4.7-4.7A2 2 0 0 1 2 15.3V8.7a2 2 0 0 1 .6-1.4l4.7-4.7A2 2 0 0 1 8.7 2z"/></svg><span>Emergência</span></button>
+          </div>
+          <div class="cam">
+            <div class="cam-h"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>Câmera (simulada) <span>só lê com carro na cancela</span></div>
+            <form id="cam-form" autocomplete="off">
+              <label class="sr-only" for="cam-placa">Placa lida</label>
+              <input class="field mono" id="cam-placa" placeholder="XYZ9K87" maxlength="7" required pattern="[A-Za-z0-9]{7}">
+              <label class="sr-only" for="cam-sentido">Sentido</label>
+              <select class="field" id="cam-sentido"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
+              <button class="btn btn-primary" type="submit">Enviar leitura</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- CPS3 -->
+      <section class="panel card c-cps3" aria-labelledby="h-cps3" id="card-cps3">
+        <div class="panel-h">
+          <div><h2 id="h-cps3" class="sys-tag">CPS3 Totem</h2><div class="hw">Display TM1637, NeoPixel ×4, PIR e botão</div></div>
+          <div class="right"><span class="st-dot" id="st-cps3"><i class="dot"></i><span>sem dado</span></span></div>
+        </div>
+        <div class="card-b">
+          <div class="totem" role="group" aria-label="Espelho do totem">
+            <div class="totem-top">
+              <canvas class="seg7" id="seg7" width="440" height="168" role="img" aria-label="Display: ----"></canvas>
+              <div class="totem-leds"><span class="tled" id="t-led"></span><span>LED</span><span class="tled" id="t-azul"></span><span>Ajuda</span></div>
+            </div>
+            <div class="strip" id="t-strip" role="img" aria-label="Fita NeoPixel: sem dado"><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span></div>
+          </div>
+          <dl class="totem-facts" id="cps3-facts"></dl>
+          <div class="ajuda-box" id="ajuda-box">
+            <svg class="i" viewBox="0 0 24 24"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/></svg>
+            <div class="txt" id="ajuda-txt">Sem chamado</div>
+            <button class="btn btn-sm" data-acao="atender" id="btn-atender" data-k="atender">Atender ajuda</button>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <span class="sublabel">Brilho do totem</span>
+            <div class="seg" role="group" aria-label="Brilho do totem" id="seg-brilho">
+              <button data-acao="brilho" data-v="alto" data-k="b-alto" aria-pressed="false">Alto</button>
+              <button data-acao="brilho" data-v="baixo" data-k="b-baixo" aria-pressed="false">Baixo</button>
+              <button data-acao="brilho" data-v="auto" data-k="b-auto" aria-pressed="true">Auto (PIR)</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <aside class="col-side" aria-label="Alarmes e mensagens">
+    <section class="panel alarms" aria-labelledby="h-alarmes">
+      <div class="panel-h"><svg class="i" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><h2 id="h-alarmes">Alarmes</h2><span class="right sub" id="alarmes-sub"></span></div>
+      <ul class="alarm-list" id="alarm-list" aria-live="assertive"></ul>
+    </section>
+    <section class="panel grow" aria-labelledby="h-feed">
+      <div class="panel-h"><svg class="i" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><h2 id="h-feed">Interação entre sistemas</h2><span class="right sub" id="feed-sub">ao vivo</span></div>
+      <div class="scroll" tabindex="0" role="region" aria-label="Linha do tempo de eventos"><ol class="feed" id="feed" aria-live="polite"><li class="empty" style="padding:6px 0">Os eventos aparecem aqui quando um sistema muda outro.</li></ol></div>
+    </section>
+    <section class="panel grow" aria-labelledby="h-log">
+      <div class="panel-h"><svg class="i" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg><h2 id="h-log">Log MQTT</h2><span class="right sub" id="log-sub">0 mensagens</span></div>
+      <div class="log-tools">
+        <label class="sr-only" for="log-filtro">Filtrar log</label>
+        <input class="field" id="log-filtro" placeholder="Filtrar por tópico ou conteúdo">
+        <label class="sr-only" for="log-sys">Sistema</label>
+        <select class="field" id="log-sys"><option value="">Todos</option><option value="cps1">CPS1</option><option value="cps2">CPS2</option><option value="cps3">CPS3</option><option value="pagamento">Pagamento</option></select>
+      </div>
+      <div class="scroll log-wrap" tabindex="0" role="region" aria-label="Últimas mensagens MQTT">
+        <table class="log"><thead><tr><th scope="col">Hora</th><th scope="col" class="tp">Tópico</th><th scope="col" class="rt" title="Retida">R</th><th scope="col">Payload</th></tr></thead><tbody id="log-body"></tbody></table>
+      </div>
+    </section>
+  </aside>
+</section>
+
+<!-- pagar pelo celular -->
+<section class="view pay-view" id="view-pagar" role="tabpanel" aria-labelledby="tab-pagar" hidden>
+  <div>
+    <div class="phone">
+      <div class="phone-h">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div><h1>Pagar estacionamento</h1><p>SmartPark PUCPR, saída sem parar</p></div>
+      </div>
+      <div class="pay-livres">
+        <div class="n" id="p-livres">–</div>
+        <div class="l">vagas livres agora</div>
+        <div class="tipos" id="p-tipos"></div>
+      </div>
+      <div id="pay-form-area">
+        <div class="pay-step">
+          <span class="lbl">Seu carro</span>
+          <div class="pay-plates" id="p-plates"></div>
+          <label class="sr-only" for="p-placa">Placa</label>
+          <input class="field mono pay-input" id="p-placa" placeholder="Digite a placa" maxlength="7" autocomplete="off" inputmode="text">
+          <div class="pay-msg" id="p-msg" role="status" aria-live="polite"></div>
+        </div>
+        <div class="price"><span>Avulso, tarifa única</span><b>R$ 7,00</b></div>
+        <button class="btn btn-primary pay-btn" id="p-pagar">Pagar R$ 7,00</button>
+      </div>
+      <div id="pay-done-area" hidden></div>
+      <div class="phone-foot"><i class="dot" id="p-dot"></i><span id="p-conn">Conectando ao broker</span></div>
+    </div>
+    <p class="share">Demo, sem cobrança real. Abra no celular: <a id="p-link" href="?pagina=pagar">?pagina=pagar</a></p>
+  </div>
+</section>
+
+<!-- mapa -->
+<section class="view map-view" id="view-mapa" role="tabpanel" aria-labelledby="tab-mapa" hidden>
+  <div class="panel map-panel">
+    <div id="mapa" role="region" aria-label="Mapa 3D do campus"></div>
+    <div class="map-note"><h2>Campus PUCPR, Prado Velho</h2><p>Prédios em 3D do OpenStreetMap. O marcador mostra as vagas livres do CPS1 ao vivo.</p></div>
+  </div>
+</section>
+</main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module" src="./codigos/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["paho-mqtt>=2"]
+# ///
+"""Prova pelo broker que os 3 CPS estão no ar e assinando.
+
+Passa (exit 0) só se: os 3 `status` retidos dizem `online`; `cps1/sensor`
+traz 4 vagas; e cada CPS responde ao `{"ping": X}` no seu `comando`
+republicando o `estado` com `"ack": X`.
+
+Uso: scripts/verify [--prefix cscf/equipe03] [--broker broker.hivemq.com] [--timeout 20]
+"""
+import argparse, json, sys, time, uuid
+import paho.mqtt.client as mqtt
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--prefix", default="cscf/equipe03")
+ap.add_argument("--broker", default="broker.hivemq.com")
+ap.add_argument("--port", type=int, default=1883)
+ap.add_argument("--timeout", type=float, default=20)
+a = ap.parse_args()
+
+CPS = ["cps1", "cps2", "cps3"]
+token = "verify-" + uuid.uuid4().hex[:6]
+seen = {}
+
+def on_message(c, u, m):
+    seen[m.topic[len(a.prefix) + 1:]] = m.payload.decode(errors="replace")
+
+c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=token)
+c.on_message = on_message
+c.connect(a.broker, a.port, keepalive=30)
+c.subscribe(a.prefix + "/#", qos=1)
+c.loop_start()
+time.sleep(2)  # recebe os retidos
+for cps in CPS:
+    c.publish(f"{a.prefix}/{cps}/comando", json.dumps({"ping": token}), qos=1)
+
+def checks():
+    out = []
+    for cps in CPS:
+        out.append((f"{cps}/status = online", seen.get(f"{cps}/status") == "online"))
+    try:
+        vagas = json.loads(seen.get("cps1/sensor", "{}")).get("vagas", [])
+    except ValueError:
+        vagas = []
+    out.append(("cps1/sensor com 4 vagas", len(vagas) == 4))
+    for cps in CPS:
+        try:
+            ack = json.loads(seen.get(f"{cps}/estado", "{}")).get("ack")
+        except ValueError:
+            ack = None
+        out.append((f"{cps} respondeu ao ping", ack == token))
+    return out
+
+end = time.time() + a.timeout
+while time.time() < end and not all(ok for _, ok in checks()):
+    time.sleep(0.5)
+c.loop_stop(); c.disconnect()
+
+result = checks()
+for name, ok in result:
+    print(("OK   " if ok else "FALHA") + "  " + name)
+ok = all(v for _, v in result)
+print("verify:", "passou" if ok else "falhou", f"(prefixo {a.prefix}, broker {a.broker})")
+sys.exit(0 if ok else 1)

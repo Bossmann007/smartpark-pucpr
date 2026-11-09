@@ -1,0 +1,329 @@
+[
+  {
+    "id": "abertura",
+    "titulo": "Abertura: a PUCPR em 3D",
+    "dur": 24,
+    "tela": "Voo 3D sobre o câmpus Curitiba (prédios reais do OpenStreetMap), descendo até os bolsões de estacionamento. Título SmartPark 2.0.",
+    "falar": [
+      "Este é o câmpus Curitiba da PUCPR, com os prédios reais do OpenStreetMap.",
+      "O SmartPark 2.0 é o estacionamento da PUC sem parar na cancela: a vaga é medida uma a uma, a câmera lê a placa e a cancela avisa quando falha.",
+      "São três sistemas ciberfísicos, cada um com o seu ESP32, que só conversam por MQTT, mais um dashboard."
+    ],
+    "mais": [
+      "Os bolsões em destaque são as áreas marcadas como estacionamento no OpenStreetMap; as alturas vêm das tags height e building:levels quando existem, senão uma altura padrão.",
+      "Tudo roda no Wokwi com MicroPython: três projetos separados, um por ESP32.",
+      "Disciplina: Conectividade em Sistemas Ciberfísicos, 2026.2."
+    ],
+    "pergunta": [
+      "De onde vem esse 3D?",
+      "Do OpenStreetMap: uma consulta na Overpass API trouxe o contorno dos prédios do câmpus, e o Three.js levanta cada contorno até a altura dele. Os dados ficam salvos em docs/apresentacao/puc-osm.json."
+    ]
+  },
+  {
+    "id": "problema",
+    "titulo": "O problema",
+    "dur": 22,
+    "tela": "Foto real do totem do bolsão E03 e três linhas: o que existe hoje e o que o SmartPark acrescenta.",
+    "falar": [
+      "Hoje o totem conta as vagas do bolsão inteiro. Não diz qual vaga está livre. O SmartPark mede cada vaga.",
+      "Na entrada, o aluno passa a carteirinha na cancela. No SmartPark a câmera lê a placa e o débito é automático, como o Sem Parar.",
+      "E não há autodiagnóstico de cancela divulgado. O SmartPark avisa quando ela trava aberta e quando entra carro sem registro."
+    ],
+    "mais": [
+      "A PUC já tem contagem por bolsão, app de estacionamento e autoatendimento. Não estamos dizendo que não tem; estamos acrescentando a medição por vaga e o diagnóstico.",
+      "A foto é do totem E03, tirada no semestre passado."
+    ],
+    "pergunta": [
+      "A PUC já não tem contagem de vagas e app?",
+      "Tem: contagem por bolsão, o app Estacionamento PUCPR e autoatendimento. O SmartPark mede cada vaga, troca a carteirinha pela placa e dá à cancela um autodiagnóstico."
+    ]
+  },
+  {
+    "id": "origem",
+    "titulo": "De onde viemos: SmartPark 2026.1",
+    "dur": 28,
+    "tela": "Fotos reais da PUC do projeto anterior. À esquerda o SmartPark 2026.1 (1 ESP32, 2 HC-SR04, só publicava); à direita o que foi reaproveitado e o que é novo.",
+    "falar": [
+      "O SmartPark começou em Fundamentos de Sistemas Ciberfísicos, em 2026.1: um ESP32, dois HC-SR04 e um dashboard. Ele só publicava; não assinava nada.",
+      "Reaproveitamos as funções que já funcionavam: medir_distancia, atualizar_led, conectar_wifi, o buzzer em PWM e a ideia do totem de vagas.",
+      "O novo é a conectividade: três ESP32 que publicam e assinam, mensagens em JSON, Last Will, retain, reconexão e uma integração real entre eles."
+    ],
+    "mais": [
+      "medir_distancia está no CPS1 e no CPS2; atualizar_led no CPS1; conectar_wifi nos três; o buzzer em PWM no CPS2; a ideia do totem virou o CPS3.",
+      "Os tópicos antigos eram smartpark/puc/vaga1 e vaga2 (0 ou 1, em texto) e status (um JSON simples). Agora são 14 tópicos em JSON sob cscf/equipe03/.",
+      "O projeto antigo tinha 2 vagas; o novo tem 4, com tipo: 2 comuns, 1 idoso, 1 PcD."
+    ],
+    "pergunta": [
+      "Pode reaproveitar código de outra disciplina?",
+      "O reuso está marcado no topo de cada main.py, função por função. Tudo o que o enunciado avalia aqui, a comunicação entre os três por MQTT, é novo."
+    ]
+  },
+  {
+    "id": "arquitetura",
+    "titulo": "Arquitetura: tudo passa pelo broker",
+    "dur": 24,
+    "tela": "Os três ESP32 no topo, o broker MQTT no meio e o dashboard embaixo, como no modelo do enunciado. Cada um com PUB + SUB.",
+    "falar": [
+      "A arquitetura segue o modelo do enunciado: três CPS em cima, o broker no meio e o dashboard embaixo.",
+      "CPS1 mede as vagas, CPS2 é o módulo da cancela, CPS3 é o totem da entrada.",
+      "Nenhum sistema fala direto com outro. Os ESP32 conectam no broker HiveMQ pela porta 1883, e o dashboard pelo WebSocket seguro, na 8884."
+    ],
+    "mais": [
+      "Todos publicam e assinam: o enunciado pede os dois papéis em cada ESP32.",
+      "O broker é público, então os tópicos têm o prefixo cscf/equipe03 e as placas são fictícias.",
+      "Reserva se o HiveMQ cair: broker.emqx.io."
+    ],
+    "pergunta": [
+      "Por que não ligar um ESP32 direto no outro?",
+      "Porque aí cada um teria que conhecer o endereço do outro. Com o broker, quem publica não sabe quem assina: dá para pôr um quarto CPS sem mexer nos três."
+    ]
+  },
+  {
+    "id": "pubsub",
+    "titulo": "Publicar × assinar e o papel do broker",
+    "dur": 28,
+    "tela": "Os assinantes avisam o broker; o CPS1 publica cps1/sensor e o broker entrega uma cópia a cada assinante; o dashboard publica cps2/comando e só o CPS2 recebe. Depois: QoS, retain e Last Will.",
+    "falar": [
+      "Assinar é avisar o broker: quero tudo o que chegar neste tópico. O CPS2, o CPS3 e o dashboard assinam cps1/sensor.",
+      "Publicar é mandar uma mensagem para um tópico. O CPS1 publica as vagas; o broker entrega uma cópia para cada assinante.",
+      "O dashboard também é cliente: ele publica no comando do CPS2, e só o CPS2 recebe, porque só ele assina esse tópico."
+    ],
+    "mais": [
+      "QoS 0 nas leituras e no estado; QoS 1 em comandos, alarmes e pagamento, que precisam de confirmação.",
+      "Retain: o broker guarda a última mensagem do tópico e entrega na hora a quem conectar depois.",
+      "Last Will: cada ESP32 deixa um offline com o broker ao conectar; se cair, o broker publica por ele.",
+      "As mensagens na tela são reais: vêm do log do teste de integração, com os três main.py rodando contra o broker."
+    ],
+    "pergunta": [
+      "O CPS1 sabe que o CPS3 existe?",
+      "Não. Ele só publica em cps1/sensor. Quem decide receber é o assinante; o broker faz a entrega."
+    ]
+  },
+  {
+    "id": "int-vagas",
+    "titulo": "Integração 1: vagas → totem",
+    "dur": 12,
+    "tela": "Carro para na V1. O CPS1 publica cps1/sensor; o totem (CPS3) muda para 3 e pinta a V1 de vermelho na fita.",
+    "falar": [
+      "Um carro para na V1. O HC-SR04 mede 19 centímetros, abaixo do limite de 50: a vaga está ocupada e o LED fica vermelho.",
+      "O CPS1 publica cps1/sensor. O totem assina esse tópico: o display vai de 4 para 3 e a primeira luz da fita fica vermelha."
+    ],
+    "mais": [
+      "Na fita, cada cor é um tipo de vaga livre: verde comum, amarelo idoso, azul PcD; vermelho é ocupada.",
+      "O CPS1 usa histerese: ocupa abaixo de 50 cm e só libera acima de 60 cm, para o LED não piscar na borda."
+    ],
+    "pergunta": [
+      "O totem lê o sensor da vaga?",
+      "Não. O totem não tem sensor de vaga: tudo o que ele mostra chega pela rede, no cps1/sensor."
+    ]
+  },
+  {
+    "id": "int-lotado",
+    "titulo": "Integração 2: lotado → cancela nega",
+    "dur": 14,
+    "tela": "Avulso XYZ9K87 entra; V2 ocupa e as vagas comuns acabam; QWE4R56 é negada com buzzer; PUC0R26 (PcD) ainda entra.",
+    "falar": [
+      "A câmera do dashboard manda a placa XYZ9K87, sem cadastro: ela entra como avulso.",
+      "Quando a V2 é ocupada, o CPS1 publica zero vagas comuns livres. O CPS2 guarda isso.",
+      "A próxima placa comum é negada por lotado e o buzzer toca. Mas a PUC0R26 é PcD e ainda tem vaga do tipo dela: a cancela abre."
+    ],
+    "mais": [
+      "A regra fica no ESP32 da cancela: comum precisa de vaga comum; idoso e PcD usam a sua ou uma comum.",
+      "O dado que decide vem de outro ESP32: é a integração do item 4.4."
+    ],
+    "pergunta": [
+      "E se o CPS1 estiver fora do ar?",
+      "Se o CPS2 nunca recebeu as vagas, ele não bloqueia a entrada (vagas_cps1 é None e tem_vaga devolve verdadeiro): falha segura para o fluxo."
+    ]
+  },
+  {
+    "id": "int-evasao",
+    "titulo": "Integração 3: evasão",
+    "dur": 12,
+    "tela": "Quatro vagas ocupadas, só três carros entraram pela cancela: o CPS2 publica cps2/alarme evasão com diferença 1; o totem pisca o LED vermelho.",
+    "falar": [
+      "O CPS2 compara duas coisas: as vagas ocupadas, que vêm do CPS1, e os carros que entraram pela cancela.",
+      "Quatro ocupadas e três dentro: alguém entrou sem passar pela cancela. O CPS2 publica o alarme de evasão, e o totem e o dashboard reagem."
+    ],
+    "mais": [
+      "Evasão só existe porque os dois sistemas conversam: nenhum dos dois sabe isso sozinho.",
+      "O alarme é publicado com QoS 1 e sem retain, só quando começa ou termina."
+    ],
+    "pergunta": [
+      "Como o CPS2 sabe quantos estão dentro?",
+      "Ele soma entradas e tira saídas, e publica a lista em cps2/estado com retain; se reiniciar, relê esse retido e lembra quem estava dentro."
+    ]
+  },
+  {
+    "id": "int-travada",
+    "titulo": "Integração 4: cancela travada",
+    "dur": 12,
+    "tela": "A cancela recebe ordem de fechar, mas o fim de curso continua aberto. Depois de 3 s, o CPS2 publica cps2/alarme cancela_travada.",
+    "falar": [
+      "A cancela fechou no tempo dela, mas o fim de curso diz que ela continua aberta.",
+      "Depois de três segundos sem confirmação, o CPS2 toca o buzzer e publica cancela travada. O CPS3 e o dashboard assinam o alarme."
+    ],
+    "mais": [
+      "É o autodiagnóstico da cancela: ela mesma avisa que não fechou.",
+      "No teste, o alarme de evasão ainda estava ativo, então o LED do totem já piscava; com a cancela travada ele continua piscando.",
+      "Os 3 s são a constante TEMPO_TRAVADA_MS do CPS2."
+    ],
+    "pergunta": [
+      "O que é o fim de curso no Wokwi?",
+      "Uma chave deslizante: à esquerda a cancela está fechada, à direita continua aberta. Na cancela real seria um sensor de fim de curso."
+    ]
+  },
+  {
+    "id": "int-pagamento",
+    "titulo": "Integração 5: pagamento → saída",
+    "dur": 15,
+    "tela": "Saída do avulso XYZ9K87 negada (pagamento pendente); o dashboard publica em pagamento; o CPS2 confirma; a cancela abre. ABC1D23 sai com débito automático (saldo 45).",
+    "falar": [
+      "Na saída, o avulso XYZ9K87 é negado: pagamento pendente.",
+      "Pelo celular, o dashboard publica no tópico pagamento. O CPS2 assina, marca como pago e confirma.",
+      "Na segunda leitura, a cancela abre. Já a ABC1D23 é cadastrada: sai direto, com débito automático de 5 reais."
+    ],
+    "mais": [
+      "O pagamento é simulado: é uma mensagem MQTT, sem cobrança real.",
+      "O cadastro e o saldo das placas de teste ficam no CPS2: a cancela funciona mesmo com o dashboard fechado."
+    ],
+    "pergunta": [
+      "Por que o pagamento usa QoS 1?",
+      "Porque é importante: com QoS 1 o broker confirma que recebeu e entrega pelo menos uma vez a quem está conectado. Se o CPS2 estiver fora do ar, a mensagem não fica guardada (sessão limpa) e o celular mostra que não houve confirmação."
+    ]
+  },
+  {
+    "id": "int-emergencia",
+    "titulo": "Integração 6: emergência",
+    "dur": 12,
+    "tela": "O dashboard publica {\"modo\": \"emergencia\"} em cps2/comando: a cancela abre e fica aberta; o CPS1 pisca os LEDs; o totem pisca a fita em branco.",
+    "falar": [
+      "O operador aperta emergência. O dashboard publica no comando do CPS2.",
+      "A cancela abre e fica aberta. O CPS2 publica o novo estado; o CPS1 e o CPS3 assinam esse estado: os LEDs das vagas piscam e a fita do totem pisca em branco."
+    ],
+    "mais": [
+      "Um comando, três sistemas reagindo: o dashboard só falou com o CPS2; o resto chegou pelo estado publicado.",
+      "Em emergência, placa lida não abre nem nega: o CPS2 registra o evento livre."
+    ],
+    "pergunta": [
+      "Como o CPS1 fica sabendo da emergência?",
+      "Ele assina cps2/estado. Quando o campo modo vira emergencia, ele pisca os LEDs."
+    ]
+  },
+  {
+    "id": "int-ajuda",
+    "titulo": "Integração 7: ajuda no totem",
+    "dur": 11,
+    "tela": "Botão de ajuda no CPS3 → cps3/sensor {\"ajuda\": true} → o dashboard mostra o chamado → o operador responde em cps3/comando → LED azul aceso.",
+    "falar": [
+      "O motorista aperta o botão de ajuda no totem. O CPS3 publica em cps3/sensor e o LED azul pisca enquanto espera.",
+      "O dashboard mostra o chamado; o operador clica em atender, que publica em cps3/comando. O LED azul fica aceso por 10 segundos."
+    ],
+    "mais": [
+      "É o acionamento remoto de um atuador: o LED do totem muda por uma mensagem do dashboard.",
+      "O PIR do totem também publica presença e aumenta o brilho."
+    ],
+    "pergunta": [
+      "Por que o comando não usa retain?",
+      "Comando retido seria executado de novo a cada reconexão. Por isso comandos, alarmes e pagamento vão com QoS 1 e sem retain."
+    ]
+  },
+  {
+    "id": "int-irregular",
+    "titulo": "Integração 8: vaga PcD irregular",
+    "dur": 12,
+    "tela": "O carro PcD sai, a ABC1D23 (comum) entra e para na V4: vagas PcD ocupadas 1, carros PcD dentro 0 → cps2/alarme vaga_irregular; o totem pisca só a V4.",
+    "falar": [
+      "O carro PcD sai e entra uma placa comum, que para na V4, a vaga PcD.",
+      "O CPS2 compara as vagas PcD ocupadas, que vêm do CPS1, com os carros PcD que entraram pela cancela. Uma contra zero: publica o alarme de vaga irregular, e o totem pisca só a V4."
+    ],
+    "mais": [
+      "O dashboard avisa o operador, que chama a fiscalização: quem multa é o agente de trânsito (CTB art. 181, XX, também em estacionamento privado de uso coletivo).",
+      "As mensagens desta parte vêm de uma segunda execução do teste, com o tempo deslocado em 10 s."
+    ],
+    "pergunta": [
+      "E se o carro PcD parar numa vaga comum e um comum parar na V4?",
+      "O alarme não toca: o CPS2 não sabe qual carro está em qual vaga, só compara as contas. Para isso precisaria de um leitor de placa ou de credencial em cada vaga."
+    ]
+  },
+  {
+    "id": "int-queda",
+    "titulo": "Integração 9: queda e Last Will",
+    "dur": 13,
+    "tela": "O CPS1 cai sem avisar; o broker publica cps1/status offline (Last Will); o totem mostra ---- e a fita pisca laranja; o CPS1 volta, publica online e o número volta.",
+    "falar": [
+      "Agora o CPS1 cai sem avisar. Quem publica o offline é o broker, com o Last Will que o CPS1 deixou ao conectar.",
+      "O totem assina cps1/status: mostra quatro traços e a fita pisca laranja, para não mostrar um número velho.",
+      "Quando o CPS1 volta, publica online e as vagas, e o totem volta ao número."
+    ],
+    "mais": [
+      "Last Will com retain: quem conectar depois também fica sabendo que o CPS1 está offline.",
+      "Cada ESP32 reconecta sozinho e refaz as assinaturas quando a rede cai."
+    ],
+    "pergunta": [
+      "Como o broker sabe que o ESP32 caiu?",
+      "Pelo keepalive: o ESP32 manda ping a cada 10 s, com keepalive de 30 s. Se a conexão fecha, o broker publica o Last Will na hora; se ela fica muda, publica depois de 1,5 × 30 s = 45 s."
+    ]
+  },
+  {
+    "id": "ciclo",
+    "titulo": "O ciclo ciberfísico",
+    "dur": 22,
+    "tela": "Aquisição → processamento → conectividade → atuação → realimentação, cada etapa com um exemplo do código.",
+    "falar": [
+      "Aquisição: o HC-SR04 mede a distância na vaga.",
+      "Processamento: o ESP32 compara com o limite e decide que a vaga está ocupada.",
+      "Conectividade: publica no broker. Atuação: o totem e a cancela mudam por causa dessa mensagem.",
+      "Realimentação: cada um publica o próprio estado com retain, para os outros e para o dashboard."
+    ],
+    "mais": [
+      "Mundo físico, mundo digital e de volta ao físico: é o desenho do item 6 do enunciado.",
+      "A rede amplia o controle: a cancela decide com o dado da vaga, e o operador comanda tudo de longe."
+    ],
+    "pergunta": [
+      "Onde está a realimentação no código?",
+      "No estado publicado com retain: cps1/estado, cps2/estado e cps3/estado, republicados a cada mudança. O dashboard e os outros CPS leem isso."
+    ]
+  },
+  {
+    "id": "respostas",
+    "titulo": "As 7 perguntas do item 9",
+    "dur": 38,
+    "tela": "As sete perguntas do enunciado com a resposta curta, uma de cada vez.",
+    "falar": [
+      "Broker: o intermediário. Recebe toda mensagem e entrega a quem assinou o tópico.",
+      "Publicar envia para um tópico; assinar pede para receber. Quem publica não conhece quem assina.",
+      "Tópicos: sensor, estado, comando e status em cada CPS, alarme no CPS2 e pagamento.",
+      "A mensagem chega aos outros pelo broker: o CPS1 publica, o CPS2 e o CPS3 recebem no callback.",
+      "O callback atualiza o estado e o loop decide o atuador: servo, buzzer, LEDs, display.",
+      "O dashboard é só mais um cliente MQTT, pelo WebSocket: assina e publica comandos.",
+      "Vantagens do MQTT: leve, desacoplado, com QoS, retain e Last Will."
+    ],
+    "mais": [
+      "As respostas longas estão em docs/APRESENTACAO.md.",
+      "A tabela completa de tópicos está em docs/topicos.md."
+    ],
+    "pergunta": [
+      "Por que não HTTP?",
+      "No HTTP cada sistema teria que perguntar ao outro de tempos em tempos. No MQTT a mensagem chega na hora para todos os interessados, por uma conexão só."
+    ]
+  },
+  {
+    "id": "fechamento",
+    "titulo": "Fechamento",
+    "dur": 12,
+    "tela": "SmartPark 2.0: 3 ESP32, 1 broker, 1 dashboard, 14 tópicos, 9 integrações. MQTT em 5 palavras.",
+    "falar": [
+      "Três ESP32, um broker e um dashboard: cada informação de um sistema muda o que o outro faz.",
+      "MQTT em cinco palavras: broker, publicar, assinar, retain e Last Will. Obrigado."
+    ],
+    "mais": [
+      "Os links dos três Wokwi, o dashboard, a tabela de tópicos e o diagrama estão no repositório.",
+      "A prova de funcionamento é o scripts/verify e o teste de integração em sim/."
+    ],
+    "pergunta": [
+      "E se o broker cair?",
+      "A comunicação para, mas cada ESP32 continua com as regras locais (o CPS1 acende os LEDs, a cancela usa as últimas vagas recebidas) e tenta reconectar a cada 5 s sem travar. Em produção seria um broker próprio, com usuário e TLS; aqui a reserva é manual: trocar a constante BROKER para o EMQX."
+    ]
+  }
+]
