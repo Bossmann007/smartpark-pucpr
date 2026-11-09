@@ -10,7 +10,7 @@
 **Estacionamento da PUC com vaga medida uma a uma, câmera de placa e cancela que avisa quando falha**<br>
 ESP32 · MicroPython · MQTT · Wokwi · Dashboard web
 
-[![Vídeo](https://img.shields.io/badge/Vídeo-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/EEVO-9NKvvE)
+[![Vídeo](https://img.shields.io/badge/Vídeo-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/i0HZdud2uAU)
 [![Wokwi](https://img.shields.io/badge/Simulação-Wokwi-green?style=for-the-badge&logo=espressif&logoColor=white)](#-simulações-no-wokwi)
 [![MicroPython](https://img.shields.io/badge/MicroPython-ESP32-blue?style=for-the-badge&logo=python&logoColor=white)](https://micropython.org/)
 [![MQTT](https://img.shields.io/badge/MQTT-HiveMQ-660066?style=for-the-badge&logo=mqtt&logoColor=white)](docs/broker.md)
@@ -56,7 +56,7 @@ Os três ESP32 **não se falam direto**: tudo passa pelo broker MQTT.
 <table>
   <tr>
     <td align="center" width="50%">
-      <a href="https://youtu.be/EEVO-9NKvvE"><img src="https://img.youtube.com/vi/EEVO-9NKvvE/maxresdefault.jpg" alt="Vídeo da demonstração"></a><br>
+      <a href="https://youtu.be/i0HZdud2uAU"><img src="docs/img/capa.png" alt="Vídeo da demonstração"></a><br>
       <b>▶️ Demonstração</b> (7 min)<br>os 3 Wokwi, o broker e o dashboard rodando
     </td>
     <td align="center" width="50%">
