@@ -321,7 +321,7 @@ body.render #inicio, body.render #controles { display: none; }
     </div>
     <div class="no" id="no-broker" style="left:240px;top:420px;width:640px;height:100px">
       <div class="bt">BROKER MQTT<span>broker.hivemq.com</span></div>
-      <div class="rota" id="rota">recebe e distribui · cscf/smartpark/…</div>
+      <div class="rota" id="rota">recebe e distribui · cscf/equipe03/…</div>
     </div>
     <div class="no" id="no-dash" style="left:200px;top:610px;width:720px;height:230px">
       <div class="topo"><i class="st" style="background:var(--verde)"></i>Dashboard · HTML + MQTT.js (WebSocket)<span class="pubsub">PUB + SUB</span></div>
@@ -375,8 +375,8 @@ const FOLHAS = __FOLHAS__;
 const LOG = __LOG__;
 const OSM = __OSM__;
 const FOTOS = __FOTOS__;
-const EQUIPE = "Enzo Bossmann";
-const PREFIXO = "cscf/smartpark/";
+const EQUIPE = "Equipe 3: Enzo Bossmann, Diego Feltrin e Gabriel Henrique";
+const PREFIXO = "cscf/equipe03/";
 
 // ======================= tempo e partes =======================
 let acc = 0;
@@ -444,7 +444,7 @@ function replay(L) {
     if (m.topico === "cps2/alarme") {
       s.alarmes[o.tipo] = o;
       if (o.tipo === "cancela_travada" && o.ativo) s.buzAte = m.t + 1.5;
-      s.eventos.push({ t: m.t, c: o.ativo ? "al" : "", x: `${o.tipo === "evasao" ? "evasão" : "cancela travada"} ${o.ativo ? "ATIVO" + (o.diferenca ? " · diferença " + o.diferenca : "") : "encerrado"}` });
+      s.eventos.push({ t: m.t, c: o.ativo ? "al" : "", x: `${o.tipo === "evasao" ? "evasão" : o.tipo === "vaga_irregular" ? "vaga PcD irregular " + (o.vaga || "") : "cancela travada"} ${o.ativo ? "ATIVO" + (o.diferenca ? " · diferença " + o.diferenca : "") : "encerrado"}` });
     }
     if (m.topico === "cps3/sensor" && o.ajuda) s.eventos.push({ t: m.t, c: "aj", x: "chamado de ajuda no totem" });
     if (m.topico === "cps3/comando" && o.ajuda) s.eventos.push({ t: m.t, c: "aj", x: "operador atendeu o chamado" });
@@ -471,6 +471,8 @@ const CENAS = {
     regra: "Dashboard → <code>cps2/comando</code>. O CPS2 abre e publica <code>cps2/estado</code>; o CPS1 e o CPS3 assinam esse estado e piscam." },
   "int-ajuda": { kf: [[0, 38.0], [1, 38.0], [9.5, 39.45], [11, 39.45]], tops: ["cps3/sensor", "cps3/comando", "cps3/estado"],
     regra: "CPS3 publica <code>{\"ajuda\": true}</code>; o operador responde em <code>cps3/comando</code>; o LED azul fica aceso 10 s." },
+  "int-irregular": { kf: [[0, 52.8], [1, 52.8], [10.5, 57.0], [12, 57.0]], tops: ["cps2/sensor", "cps1/sensor", "cps2/alarme", "cps3/estado"],
+    regra: "CPS2: vagas PcD ocupadas (do CPS1) &gt; carros PcD dentro → <code>vaga_irregular</code> em <code>cps2/alarme</code>. O CPS3 pisca só aquela vaga." },
   "int-queda": { kf: [[0, 41.35], [1, 41.35], [11.5, 43.3], [13, 43.3]], tops: ["cps1/status", "cps3/estado", "cps1/sensor"],
     regra: "Last Will: o broker publica <code>offline</code> em <code>cps1/status</code> (retain). O CPS3 assina: mostra <code>----</code> e pisca a fita em laranja." },
 };
@@ -604,7 +606,8 @@ function desenharGemeos(st, t, L) {
   css($("l-azul"), "background", la ? "var(--azul)" : "var(--apagado)"); css($("l-azul"), "boxShadow", la ? brilhoLed("var(--azul)") : "none");
   const fita = $("fita").children, on = !(e3 && e3.fita_pisca) || pisca(t, 400);
   for (let i = 0; i < 4; i++) {
-    const c = e3 && on ? COR[e3.fita[i]] || COR.apagado : COR.apagado;
+    const aceso = on && !(e3 && e3.pisca_vaga === i && !pisca(t, 400));
+    const c = e3 && aceso ? COR[e3.fita[i]] || COR.apagado : COR.apagado;
     css(fita[i], "background", c); css(fita[i], "boxShadow", brilhoLed(c));
   }
   txt($("c3-ajuda"), "ajuda: " + aj);
@@ -710,9 +713,14 @@ function painelIntegracao(p, u, c, s, st) {
     const oc = s1 ? s1.vagas.filter(v => v.ocupada).length : 0, de = e2 ? e2.dentro : 0;
     extra = `<div class="tres"><div><b>${oc}</b>vagas ocupadas (CPS1)</div><div><b>${de}</b>carros dentro (CPS2)</div><div style="border-color:${oc - de > 0 ? "rgba(240,82,82,0.6)" : "var(--borda)"}"><b style="color:${oc - de > 0 ? "var(--vermelho)" : "var(--tx)"}">${Math.max(0, oc - de)}</b>diferença → evasão</div></div>`;
   }
+  if (p.id === "int-irregular") {
+    const s1 = J(st, "cps1/sensor"), e2 = J(st, "cps2/estado");
+    const oc = s1 ? s1.vagas.filter(v => v.tipo === "pcd" && v.ocupada).length : 0, de = e2 ? (e2.placas || []).filter(x => x.tipo === "pcd").length : 0;
+    extra = `<div class="tres"><div><b>${oc}</b>vagas PcD ocupadas (CPS1)</div><div><b>${de}</b>carros PcD dentro (CPS2)</div><div style="border-color:${oc - de > 0 ? "rgba(240,82,82,0.6)" : "var(--borda)"}"><b style="color:${oc - de > 0 ? "var(--vermelho)" : "var(--tx)"}">${Math.max(0, oc - de)}</b>vaga irregular</div></div>`;
+  }
   const nf = ult && ult.m.topico === "cps1/sensor" ? 2 : 4;
   const feed = atuais.slice(-1 - nf, -1).reverse().map(x => `<div><span>${x.m.t.toFixed(3)} s</span><span class="tp">${x.m.topico}</span><span class="sm">${esc(resumo(x.m))}</span></div>`).join("");
-  return `<div class="pk">Integração ${n} de 8</div><div class="pt">${esc(titulo)}</div><div class="pr">${c.regra}</div><div class="extra">${extra}</div>${caixaMsg(ult)}<div class="feed">${feed}</div><div class="rodape">${RODAPE}</div>`;
+  return `<div class="pk">Integração ${n} de 9</div><div class="pt">${esc(titulo)}</div><div class="pr">${c.regra}</div><div class="extra">${extra}</div>${caixaMsg(ult)}<div class="feed">${feed}</div><div class="rodape">${RODAPE}${p.id === "int-irregular" ? " Esta parte vem de uma segunda execução do teste (tempo deslocado; o estado de partida é a última mensagem de cada tópico antes dela)." : ""}</div>`;
 }
 function painelPubsub(u, c, s) {
   const passo = u < 7 ? 0 : u < 13.6 ? 1 : u < 20.5 ? 2 : 3;
@@ -722,11 +730,11 @@ function painelPubsub(u, c, s) {
     const linhas = [["cps1/sensor", "CPS2", 2.4], ["cps1/sensor", "CPS3", 3.0], ["cps1/sensor", "dashboard", 3.6], ["cps2/comando", "CPS2", 4.8]];
     corpo = `<div class="pr">Assinar é avisar o broker: <b>quero receber tudo o que chegar neste tópico</b>. Quem assina não precisa saber quem publica.</div>
       <div class="tabela">${linhas.map(([tp, q, at]) => `<div style="opacity:${E(u, at, at + 0.5).toFixed(2)}"><code>SUBSCRIBE ${PREFIXO}${tp}</code><b>${q}</b></div>`).join("")}</div>
-      <div class="pr" style="font-size:17px;color:var(--mut)">No código: <code>cliente.subscribe(T_CPS1_SENSOR, qos=1)</code> no CPS2; o dashboard assina <code>cscf/smartpark/#</code>.</div>`;
+      <div class="pr" style="font-size:17px;color:var(--mut)">No código: <code>cliente.subscribe(T_CPS1_SENSOR, qos=1)</code> no CPS2; o dashboard assina <code>cscf/equipe03/#</code>.</div>`;
   } else if (passo === 1) {
     const p = c.msgs.find(x => x.m.topico === "cps1/sensor");
     corpo = `<div class="pr">Publicar é mandar uma mensagem para um tópico. O broker entrega <b>uma cópia para cada assinante</b>.</div>
-      <div class="anat"><div><b>cscf</b><span>disciplina</span></div><div class="sep">/</div><div><b>smartpark</b><span>equipe</span></div><div class="sep">/</div><div><b>cps1</b><span>sistema</span></div><div class="sep">/</div><div><b>sensor</b><span>tipo</span></div></div>
+      <div class="anat"><div><b>cscf</b><span>disciplina</span></div><div class="sep">/</div><div><b>equipe03</b><span>equipe</span></div><div class="sep">/</div><div><b>cps1</b><span>sistema</span></div><div class="sep">/</div><div><b>sensor</b><span>tipo</span></div></div>
       ${u >= c.msgs[0].s - 1.15 ? caixaMsg(p) : ""}`;
   } else if (passo === 2) {
     const a = c.msgs.find(x => x.m.topico === "cps2/comando"), b = c.msgs.find(x => x.m.topico === "cps2/sensor");
@@ -741,7 +749,7 @@ function painelPubsub(u, c, s) {
 }
 
 // posição do grafo: centrado na arquitetura, à esquerda no resto
-const GRAFO_PARTES = ["arquitetura", "pubsub", "int-vagas", "int-lotado", "int-evasao", "int-travada", "int-pagamento", "int-emergencia", "int-ajuda", "int-queda"];
+const GRAFO_PARTES = ["arquitetura", "pubsub", "int-vagas", "int-lotado", "int-evasao", "int-travada", "int-pagamento", "int-emergencia", "int-ajuda", "int-irregular", "int-queda"];
 function desenharGrafo(t, p, u) {
   const g = $("grafo"), dentro = GRAFO_PARTES.includes(p.id);
   if (!dentro) { aparece(g, 0); aparece($("painel"), 0); return; }
@@ -770,7 +778,7 @@ function desenharGrafo(t, p, u) {
   const r = desenharPulsos(c, s);
   let n = r.n;
   if (p.id === "pubsub") {   // assinaturas (anéis subindo)
-    for (const [de, at, tp] of [["cps2", 1.8, "SUBSCRIBE cps1/sensor"], ["cps3", 2.4, "SUBSCRIBE cps1/sensor"], ["dash", 3.0, "SUBSCRIBE cscf/smartpark/#"], ["cps2", 4.2, "SUBSCRIBE cps2/comando"]]) {
+    for (const [de, at, tp] of [["cps2", 1.8, "SUBSCRIBE cps1/sensor"], ["cps3", 2.4, "SUBSCRIBE cps1/sensor"], ["dash", 3.0, "SUBSCRIBE cscf/equipe03/#"], ["cps2", 4.2, "SUBSCRIBE cps2/comando"]]) {
       if (u >= at && u <= at + 0.9 && POOL[n]) pulsoAssinatura(POOL[n++], de, eio(pr(u, at, at + 0.9)), tp);
     }
   }
@@ -781,7 +789,7 @@ function desenharGrafo(t, p, u) {
     css($("no-" + nn), "boxShadow", k > 0 ? `0 0 ${(40 * k).toFixed(0)}px rgba(139,124,255,${(0.45 * k).toFixed(2)})` : "none");
   }
   const rp = r.rota;
-  txt($("rota"), rp ? (rp.pub === "broker" ? `Last Will · ${PREFIXO}${rp.m.topico} = offline → ${rp.subs.map(d => NOME[d]).join(" · ")}` : `${PREFIXO}${rp.m.topico} → ${rp.subs.map(d => NOME[d]).join(" · ")}`) : "recebe e distribui · cscf/smartpark/…");
+  txt($("rota"), rp ? (rp.pub === "broker" ? `Last Will · ${PREFIXO}${rp.m.topico} = offline → ${rp.subs.map(d => NOME[d]).join(" · ")}` : `${PREFIXO}${rp.m.topico} → ${rp.subs.map(d => NOME[d]).join(" · ")}`) : "recebe e distribui · cscf/equipe03/…");
   css($("no-broker"), "boxShadow", rp ? "0 0 50px rgba(139,124,255,0.45)" : "0 0 0 rgba(0,0,0,0)");
   // painel
   const painel = $("painel");
@@ -819,14 +827,14 @@ const voltaLen = volta.getTotalLength();
 const RESP = [
   ["Qual é a função do broker e como ele encaminha as mensagens?", "É o intermediário: todos conectam só nele. Cada mensagem que chega num tópico vira uma cópia para cada cliente que assinou esse tópico. Ele também guarda o retido e publica o Last Will."],
   ["Qual é a diferença entre publicar e assinar?", "Publicar envia para um tópico; assinar pede ao broker o que chegar nele. O CPS1 publica as vagas; o CPS2, o CPS3 e o dashboard assinam. Quem publica não conhece quem assina."],
-  ["Quais tópicos são usados e quem publica e assina?", "Cada CPS tem sensor, estado, comando e status; o CPS2 tem alarme; e há o pagamento: 14 tópicos sob cscf/smartpark/, na tabela de docs/topicos.md."],
+  ["Quais tópicos são usados e quem publica e assina?", "Cada CPS tem sensor, estado, comando e status; o CPS2 tem alarme; e há o pagamento: 14 tópicos sob cscf/equipe03/, na tabela de docs/topicos.md."],
   ["Como uma mensagem de um sistema chega aos demais?", "O CPS1 publica cps1/sensor, o broker repassa, e o callback do CPS2 (lotado, evasão) e do CPS3 (display e fita) recebe o JSON. O dashboard também."],
   ["Como a informação da rede aciona um atuador?", "O callback lê o JSON e atualiza o estado; o loop decide. Ex.: o CPS2 só gira o servo se há vaga do tipo da placa; o CPS3 acende a fita com as cores das vagas."],
   ["Como o dashboard participa da comunicação MQTT?", "É mais um cliente do broker, pelo WebSocket (WSS 8884): assina os tópicos para mostrar tudo e publica nos tópicos comando e pagamento. Não fala direto com nenhum ESP32."],
   ["Quais as vantagens do MQTT em CPS distribuídos?", "Leve para microcontrolador, desacopla quem publica de quem assina, QoS para o que não pode se perder, retain para o estado atual e Last Will para detectar queda."],
 ];
 $("lista-resp").innerHTML = RESP.map((r, i) => `<div class="resp"><div class="nn">${i + 1}</div><div><div class="q">${esc(r[0])}</div><div class="a">${esc(r[1])}</div></div></div>`).join("");
-const STATS = [[3, "ESP32"], [1, "broker"], [1, "dashboard"], [14, "tópicos"], [8, "integrações"]];
+const STATS = [[3, "ESP32"], [1, "broker"], [1, "dashboard"], [14, "tópicos"], [9, "integrações"]];
 $("stats").innerHTML = STATS.map(s => `<div class="stat"><b>0</b><span>${s[1]}</span></div>`).join("");
 $("equipe").textContent = `${EQUIPE} · PUCPR · Conectividade em Sistemas Ciberfísicos · 2026.2`;
 $("hud-barra").innerHTML = PARTES.map(p => `<div style="flex:${p.dur}"><i></i></div>`).join("");

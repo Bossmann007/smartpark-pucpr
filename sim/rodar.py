@@ -1,6 +1,6 @@
 """Deixa os 3 CPS simulados rodando (sem cenário), para testar o dashboard sem o Wokwi.
 
-Uso (na raiz do repo):  python3 sim/rodar.py [--prefixo cscf/smartpark-teste] [--segundos 0]
+Uso (na raiz do repo):  python3 sim/rodar.py [--prefixo cscf/equipe03-teste] [--segundos 0]
 O hardware falso de cada CPS fica em sim/run/rodar/<cps>/in.json:
   {"dist": {"34": 20}, "pins": {"13": 0}}   # V1 ocupada; botão no GPIO 13 apertado
 Ctrl+C para parar (os ESP32 simulados caem e o broker publica o Last Will).
@@ -17,7 +17,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PASTAS = {"cps1": "cps1-vagas", "cps2": "cps2-cancela", "cps3": "cps3-totem"}
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--prefixo", default="cscf/smartpark-teste")
+ap.add_argument("--prefixo", default="cscf/equipe03-teste")
 ap.add_argument("--broker", default="broker.hivemq.com")
 ap.add_argument("--segundos", type=float, default=0, help="0 = até Ctrl+C")
 a = ap.parse_args()

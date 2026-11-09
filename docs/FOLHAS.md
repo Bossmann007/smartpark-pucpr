@@ -64,7 +64,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 **Mais para falar**
 
 - medir_distancia está no CPS1 e no CPS2; atualizar_led no CPS1; conectar_wifi nos três; o buzzer em PWM no CPS2; a ideia do totem virou o CPS3.
-- Os tópicos antigos eram smartpark/puc/vaga1 e vaga2 (0 ou 1, em texto) e status (um JSON simples). Agora são 14 tópicos em JSON sob cscf/smartpark/.
+- Os tópicos antigos eram smartpark/puc/vaga1 e vaga2 (0 ou 1, em texto) e status (um JSON simples). Agora são 14 tópicos em JSON sob cscf/equipe03/.
 - O projeto antigo tinha 2 vagas; o novo tem 4, com tipo: 2 comuns, 1 idoso, 1 PcD.
 
 **Se perguntarem:** Pode reaproveitar código de outra disciplina?
@@ -88,7 +88,7 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 **Mais para falar**
 
 - Todos publicam e assinam: o enunciado pede os dois papéis em cada ESP32.
-- O broker é público, então os tópicos têm o prefixo cscf/smartpark e as placas são fictícias.
+- O broker é público, então os tópicos têm o prefixo cscf/equipe03 e as placas são fictícias.
 - Reserva se o HiveMQ cair: broker.emqx.io.
 
 **Se perguntarem:** Por que não ligar um ESP32 direto no outro?
@@ -279,9 +279,31 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 ---
 
-## Folha 13. Integração 8: queda e Last Will
+## Folha 13. Integração 8: vaga PcD irregular
 
-*3:34 a 3:47 (13 s)*
+*3:34 a 3:46 (12 s)*
+
+**Na tela:** O carro PcD sai, a ABC1D23 (comum) entra e para na V4: vagas PcD ocupadas 1, carros PcD dentro 0 → cps2/alarme vaga_irregular; o totem pisca só a V4.
+
+**Falar**
+
+- O carro PcD sai e entra uma placa comum, que para na V4, a vaga PcD.
+- O CPS2 compara as vagas PcD ocupadas, que vêm do CPS1, com os carros PcD que entraram pela cancela. Uma contra zero: publica o alarme de vaga irregular, e o totem pisca só a V4.
+
+**Mais para falar**
+
+- O dashboard avisa o operador, que chama a fiscalização: quem multa é o agente de trânsito (CTB art. 181, XX, também em estacionamento privado de uso coletivo).
+- As mensagens desta parte vêm de uma segunda execução do teste, com o tempo deslocado em 10 s.
+
+**Se perguntarem:** E se o carro PcD parar numa vaga comum e um comum parar na V4?
+
+> O alarme não toca: o CPS2 não sabe qual carro está em qual vaga, só compara as contas. Para isso precisaria de um leitor de placa ou de credencial em cada vaga.
+
+---
+
+## Folha 14. Integração 9: queda e Last Will
+
+*3:46 a 3:59 (13 s)*
 
 **Na tela:** O CPS1 cai sem avisar; o broker publica cps1/status offline (Last Will); o totem mostra ---- e a fita pisca laranja; o CPS1 volta, publica online e o número volta.
 
@@ -302,9 +324,9 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 ---
 
-## Folha 14. O ciclo ciberfísico
+## Folha 15. O ciclo ciberfísico
 
-*3:47 a 4:09 (22 s)*
+*3:59 a 4:21 (22 s)*
 
 **Na tela:** Aquisição → processamento → conectividade → atuação → realimentação, cada etapa com um exemplo do código.
 
@@ -326,9 +348,9 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 ---
 
-## Folha 15. As 7 perguntas do item 9
+## Folha 16. As 7 perguntas do item 9
 
-*4:09 a 4:47 (38 s)*
+*4:21 a 4:59 (38 s)*
 
 **Na tela:** As sete perguntas do enunciado com a resposta curta, uma de cada vez.
 
@@ -353,11 +375,11 @@ Uma folha por parte da apresentação animada (`docs/apresentacao/apresentacao-a
 
 ---
 
-## Folha 16. Fechamento
+## Folha 17. Fechamento
 
-*4:47 a 4:59 (12 s)*
+*4:59 a 5:11 (12 s)*
 
-**Na tela:** SmartPark 2.0: 3 ESP32, 1 broker, 1 dashboard, 14 tópicos, 8 integrações. MQTT em 5 palavras.
+**Na tela:** SmartPark 2.0: 3 ESP32, 1 broker, 1 dashboard, 14 tópicos, 9 integrações. MQTT em 5 palavras.
 
 **Falar**
 

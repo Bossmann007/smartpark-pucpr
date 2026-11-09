@@ -2,7 +2,7 @@
 
 Módulo acoplado à cancela que já existe; a mesma cancela serve entrada e saída. O HC-SR04 vê o carro parado, a câmera (simulada) lê a placa e o ESP32 decide: abre o servo ou nega com o buzzer. Usa as vagas do CPS1 para saber se lotou e para achar evasão. O fim de curso confirma se a cancela fechou.
 
-- Link do Wokwi: [colar aqui]
+- Link do Wokwi: https://wokwi.com/projects/480004498194137089
 - Arquivos: `main.py`, `diagram.json`
 
 | Peça | Pino | Uso |

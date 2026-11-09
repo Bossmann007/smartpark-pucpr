@@ -1,12 +1,21 @@
-# SmartPark 2.0 · CPS2 Cancela · Projeto CSCF 2026.2 (PUCPR)
-# Módulo acoplado à cancela que já existe; serve entrada e saída.
-# Um HC-SR04 vê o carro parado, a "câmera" lê a placa e o ESP32 decide:
-# abre o servo ou nega com o buzzer. Usa as vagas do CPS1 para saber se lotou
-# e para achar evasão (mais carros nas vagas do que entraram pela cancela).
-# Um fim de curso confirma se a cancela fechou; se não fechou, alarme.
+# Equipe 3: Enzo Bossmann, Diego Feltrin e Gabriel Henrique
+# Projeto: SmartPark 2.0 - CPS2 Cancela
+# Disciplina: Conectividade em Sistemas Ciberfisicos - PUCPR 2026.2
+# Placa: ESP32 + HC-SR04 + 3 botoes + 2 chaves + servo + buzzer | Comunicacao: MQTT
 #
-# Reaproveitado do SmartPark 2026.1 (Old/main.py): medir_distancia(),
-# conectar_wifi() e o buzzer em PWM. O resto é novo.
+# Logica: modulo que vai junto da cancela que ja existe (entrada e saida).
+# O HC-SR04 ve o carro parado, a "camera" le a placa (botoes ou dashboard)
+# e o ESP32 abre o servo ou nega com o buzzer. As vagas do CPS1 dizem se
+# lotou e mostram evasao (mais carro nas vagas do que entrou pela cancela)
+# e vaga PcD irregular (vaga PcD ocupada sem nenhum carro PcD dentro).
+# O fim de curso confirma se a cancela fechou mesmo.
+#
+# Do SmartPark do semestre passado (Old/main.py) vieram medir_distancia(),
+# conectar_wifi() e o buzzer em PWM. O resto e novo.
+#
+# Publica:  cps2/sensor (eventos), cps2/estado, cps2/alarme, cps2/status
+# Assina:   cps1/sensor, cps1/status, cps3/sensor (ajuda), cps2/comando,
+#           pagamento e o proprio cps2/estado (so para lembrar quem estava dentro)
 
 import json
 import random
@@ -16,16 +25,17 @@ import network
 from machine import PWM, Pin, time_pulse_us
 from umqtt.simple import MQTTClient
 
-# ===== CONFIGURAÇÃO =====
+# Configuracoes
 WIFI_SSID = "Wokwi-GUEST"
 WIFI_SENHA = ""
 BROKER = "broker.hivemq.com"
-PREFIXO = "cscf/smartpark"   # troque "smartpark" pelo id da equipe
+PREFIXO = "cscf/equipe03"
 try:
-    from sim_config import BROKER, PREFIXO  # só no teste local (sim/); não existe no Wokwi
+    from sim_config import BROKER, PREFIXO  # so existe no teste local (pasta sim/)
 except ImportError:
     pass
 
+# id com numero aleatorio porque no Wokwi todo ESP32 tem o mesmo MAC
 CLIENT_ID = "smartpark-cps2-%04x" % (random.getrandbits(16) ^ (time.ticks_us() & 0xFFFF))
 
 T_SENSOR = PREFIXO + "/cps2/sensor"
@@ -38,60 +48,75 @@ T_CPS1_SENSOR = PREFIXO + "/cps1/sensor"
 T_CPS1_STATUS = PREFIXO + "/cps1/status"
 T_CPS3_SENSOR = PREFIXO + "/cps3/sensor"
 
-CARRO_CM = 30            # carro parado na cancela abaixo disso
-TEMPO_ABERTA_MS = 5000   # a cancela fecha sozinha depois disso
-TEMPO_TRAVADA_MS = 3000  # mandou fechar e o fim de curso não confirmou: alarme
-TARIFA = 5.00            # débito automático da placa cadastrada
-PING_MS = 10000          # sinal de vida (keepalive = 30 s)
-RECONECTAR_MS = 5000     # sem rede: nova tentativa a cada 5 s, sem parar a cancela
+CARRO_CM = 30            # abaixo disso tem carro parado na cancela
+TEMPO_ABERTA_MS = 5000   # depois disso a cancela fecha sozinha
+TEMPO_TRAVADA_MS = 3000  # mandou fechar e o fim de curso nao confirmou = travada
+TARIFA = 5.00            # debito automatico da placa cadastrada
+PING_MS = 10000          # avisa o broker que esta vivo (keepalive de 30 s)
+RECONECTAR_MS = 5000     # sem rede, tenta de novo a cada 5 s
 
-# Placas de teste (fictícias). Na operação real, o cadastro fica num servidor.
+# Placas de teste (ficticias). De verdade o cadastro ficaria num servidor.
 CADASTRO = {
     "ABC1D23": {"tipo": "comum", "saldo": 50.0},
     "BRA2E19": {"tipo": "idoso", "saldo": 50.0},
     "PUC0R26": {"tipo": "pcd", "saldo": 50.0},
 }
 
-# ===== PINOS =====
+# Pinos
 trig = Pin(5, Pin.OUT)
 echo = Pin(18, Pin.IN)
-# Câmera simulada: cada botão é a câmera lendo uma placa cadastrada.
+
+# Camera simulada: cada botao e a camera lendo uma placa cadastrada
 botoes = [
     (Pin(13, Pin.IN, Pin.PULL_UP), "ABC1D23"),
     (Pin(14, Pin.IN, Pin.PULL_UP), "BRA2E19"),
     (Pin(27, Pin.IN, Pin.PULL_UP), "PUC0R26"),
 ]
-chave_sentido = Pin(26, Pin.IN, Pin.PULL_UP)    # esquerda (GND) = entrada, direita = saída
-fim_de_curso = Pin(25, Pin.IN, Pin.PULL_UP)     # esquerda (GND) = fechada, direita = aberta
-servo = PWM(Pin(4), freq=50, duty_u16=1638)      # 1638 ≈ 0,5 ms = 0° (fechada)
-buzzer = PWM(Pin(23), freq=1000, duty_u16=0)     # duty 0 = silêncio (padrão do Old/main.py)
+chave_sentido = Pin(26, Pin.IN, Pin.PULL_UP)   # esquerda = entrada, direita = saida
+fim_de_curso = Pin(25, Pin.IN, Pin.PULL_UP)    # esquerda = fechada, direita = aberta
 
+# Servo: 1638 = 0 graus (fechada), 4915 = 90 graus (aberta)
 SERVO_FECHADA = 1638
-SERVO_ABERTA = 4915      # ≈ 1,5 ms = 90°
+SERVO_ABERTA = 4915
+servo = PWM(Pin(4), freq=50, duty_u16=SERVO_FECHADA)
 
-# ===== ESTADO =====
-dentro = {}              # placa -> {"tipo", "avulso", "pago"}
-vagas_cps1 = None        # última mensagem do CPS1 (None = ainda não chegou)
-modo = "normal"          # ou "emergencia"
+# Buzzer igual ao Old/main.py: duty 0 = silencio, so liga para apitar
+buzzer = PWM(Pin(23), freq=1000, duty_u16=0)
+
+# Estado
+dentro = {}            # placa -> {"tipo", "avulso", "pago"}
+vagas_cps1 = None      # ultima mensagem do CPS1 (None = nao chegou ou CPS1 caiu)
+modo = "normal"        # ou "emergencia"
 cancela = "fechada"
 aberta_em = 0
-mandou_fechar_em = time.ticks_ms()   # começa fechada: o fim de curso precisa confirmar
+mandou_fechar_em = time.ticks_ms()   # None enquanto esta aberta
 travada = False
 evasao = 0
+irregular = ""         # vaga PcD ocupada sem carro PcD dentro ("" = nenhuma)
 buzzer_ate = 0
-restaurado = False       # já relemos o próprio estado retido depois de reiniciar?
+carro_presente = False
+restaurado = False     # ja releu o proprio estado retido depois de reiniciar?
 ultimo_ack = None
 mudou_por_rede = False
-lidas = []               # placas lidas pela câmera, preenchido pela interrupção dos botões
-
-# Interrupção na descida (apertou): não perde clique curto mesmo com o loop ocupado com a rede.
-for _botao, _placa in botoes:
-    _botao.irq(trigger=Pin.IRQ_FALLING, handler=lambda p, placa=_placa: lidas.append(placa))
+lidas = []             # placas lidas pelos botoes (preenchido pela interrupcao)
+pendentes = []         # comandos que chegaram pela rede, tratados no loop
 
 
-# ===== SENSOR, SERVO E BUZZER =====
+# Interrupcao no botao: nao perde clique rapido mesmo com o loop ocupado com a rede
+def botao_apertado(pino):
+    for botao, placa in botoes:
+        if botao is pino:
+            lidas.append(placa)
+
+
+for botao, placa in botoes:
+    botao.irq(trigger=Pin.IRQ_FALLING, handler=botao_apertado)
+
+
+# Funcoes
+
 def medir_distancia(trig, echo):
-    """Reaproveitado de Old/main.py: distância em cm (999 sem eco)."""
+    """Igual ao Old/main.py: distancia em cm, 999 se nao houver eco."""
     trig.off()
     time.sleep_us(2)
     trig.on()
@@ -104,15 +129,10 @@ def medir_distancia(trig, echo):
 
 
 def apitar(ms):
-    """Liga o buzzer sem travar o loop; desliga em atualizar_buzzer()."""
+    # liga o buzzer e o loop desliga depois de ms (com sleep a cancela travava)
     global buzzer_ate
     buzzer.duty_u16(32768)
     buzzer_ate = time.ticks_add(time.ticks_ms(), ms)
-
-
-def atualizar_buzzer():
-    if buzzer.duty_u16() and time.ticks_diff(time.ticks_ms(), buzzer_ate) > 0:
-        buzzer.duty_u16(0)
 
 
 def abrir_cancela():
@@ -130,14 +150,17 @@ def fechar_cancela():
     mandou_fechar_em = time.ticks_ms()
 
 
-# ===== REGRAS =====
+def ocupadas_cps1():
+    return len([v for v in vagas_cps1.get("vagas", []) if v.get("ocupada")])
+
+
 def tem_vaga(tipo):
-    """Comum precisa de vaga comum; idoso e PcD usam a sua ou uma comum."""
+    """Comum precisa de vaga comum. Idoso e PcD usam a vaga do tipo ou uma comum."""
     if vagas_cps1 is None:
-        return True   # sem dado do CPS1 não bloqueia a entrada (falha segura para o fluxo)
+        return True   # sem dado do CPS1 nao barra ninguem
     livres = vagas_cps1.get("livres_tipo", {})
-    ocupadas = sum(1 for v in vagas_cps1.get("vagas", []) if v.get("ocupada"))
-    a_caminho = max(0, len(dentro) - ocupadas)   # entrou e ainda não estacionou
+    # quem passou pela cancela e ainda nao estacionou tambem conta
+    a_caminho = max(0, len(dentro) - ocupadas_cps1())
     comuns = livres.get("comum", 0) - a_caminho
     if tipo == "comum":
         return comuns > 0
@@ -146,25 +169,27 @@ def tem_vaga(tipo):
 
 def evento(cliente, dados):
     print("Evento:", dados)
-    if cliente:   # sem rede a decisão já foi tomada; só o aviso não sai
+    if cliente:   # sem rede a cancela ja decidiu, so o aviso nao sai
+        # QoS 1 porque evento nao se repete: o broker confirma que recebeu
         cliente.publish(T_SENSOR, json.dumps(dados).encode(), qos=1)
 
 
 def placa_lida(cliente, placa, sentido):
-    """A câmera leu uma placa com um carro parado na cancela."""
+    """A camera leu uma placa com um carro parado na cancela."""
     global mudou_por_rede
     cadastro = CADASTRO.get(placa)
-    tipo = cadastro["tipo"] if cadastro else "comum"
-    base = {"placa": placa, "sentido": sentido, "tipo": tipo, "cadastrada": cadastro is not None}
+    avulso = cadastro is None
+    tipo = "comum" if avulso else cadastro["tipo"]
+    base = {"placa": placa, "sentido": sentido, "tipo": tipo, "cadastrada": not avulso}
+    mudou_por_rede = True
 
     if modo == "emergencia":
-        # cancela já está aberta; só registra, para a conta de evasão continuar certa
-        if sentido == "entrada":
-            dentro.setdefault(placa, {"tipo": tipo, "avulso": cadastro is None, "pago": False})
-        else:
+        # a cancela ja esta aberta, mas anota quem entra e sai para a evasao nao errar depois
+        if sentido == "entrada" and placa not in dentro:
+            dentro[placa] = {"tipo": tipo, "avulso": avulso, "pago": False}
+        elif sentido == "saida":
             dentro.pop(placa, None)
         evento(cliente, dict(base, evento="livre", motivo="emergencia"))
-        mudou_por_rede = True
         return
 
     if sentido == "entrada":
@@ -173,10 +198,9 @@ def placa_lida(cliente, placa, sentido):
         elif not tem_vaga(tipo):
             motivo = "lotado"
         else:
-            dentro[placa] = {"tipo": tipo, "avulso": cadastro is None, "pago": False}
+            dentro[placa] = {"tipo": tipo, "avulso": avulso, "pago": False}
             abrir_cancela()
-            evento(cliente, dict(base, evento="entrada", avulso=cadastro is None))
-            mudou_por_rede = True
+            evento(cliente, dict(base, evento="entrada", avulso=avulso))
             return
     else:
         carro = dentro.get(placa)
@@ -186,87 +210,122 @@ def placa_lida(cliente, placa, sentido):
             motivo = "pagamento_pendente"
         else:
             if not carro["avulso"]:
-                cadastro["saldo"] -= TARIFA   # débito automático, como o Sem Parar
+                # debito automatico, como o Sem Parar
+                cadastro["saldo"] -= TARIFA
                 base["saldo"] = cadastro["saldo"]
                 base["valor"] = TARIFA
             del dentro[placa]
             abrir_cancela()
             evento(cliente, dict(base, evento="saida"))
-            mudou_por_rede = True
             return
 
     apitar(600)
     evento(cliente, dict(base, evento="negado", motivo=motivo))
 
 
+def leitura(cliente, placa, sentido):
+    if carro_presente:
+        placa_lida(cliente, placa, sentido)
+    else:
+        evento(cliente, {"evento": "negado", "placa": placa, "motivo": "sem_carro_na_cancela"})
+
+
+def sentido_da_chave():
+    return "saida" if chave_sentido.value() else "entrada"
+
+
 def conferir_alarmes(cliente):
-    """Cancela travada e evasão. Publica só quando o alarme começa ou termina."""
-    global travada, evasao
-    aberta_fisica = fim_de_curso.value() == 1
-    agora_travada = (cancela == "fechada" and modo == "normal" and aberta_fisica
-                     and mandou_fechar_em is not None
+    # cancela travada, evasao e vaga PcD irregular; so publica quando o alarme liga ou desliga
+    global travada, evasao, irregular
+    agora_travada = (cancela == "fechada" and modo == "normal"
+                     and fim_de_curso.value() == 1 and mandou_fechar_em is not None
                      and time.ticks_diff(time.ticks_ms(), mandou_fechar_em) > TEMPO_TRAVADA_MS)
     if agora_travada != travada:
         travada = agora_travada
+        print("Cancela travada:", travada)
         if travada:
             apitar(1500)
         if cliente:
-            cliente.publish(T_ALARME, json.dumps({"tipo": "cancela_travada", "ativo": travada}).encode(), qos=1)
-        print("Cancela travada:", travada)
+            alarme = {"tipo": "cancela_travada", "ativo": travada}
+            cliente.publish(T_ALARME, json.dumps(alarme).encode(), qos=1)
 
+    # evasao = mais vagas ocupadas do que carros que entraram pela cancela
     nova = 0
     if vagas_cps1 is not None:
-        ocupadas = sum(1 for v in vagas_cps1.get("vagas", []) if v.get("ocupada"))
-        nova = max(0, ocupadas - len(dentro))
+        nova = max(0, ocupadas_cps1() - len(dentro))
     if nova != evasao:
         evasao = nova
+        print("Evasao:", evasao)
         if cliente:
-            cliente.publish(T_ALARME, json.dumps(
-                {"tipo": "evasao", "ativo": evasao > 0, "diferenca": evasao}).encode(), qos=1)
-        print("Evasão:", evasao)
+            alarme = {"tipo": "evasao", "ativo": evasao > 0, "diferenca": evasao}
+            cliente.publish(T_ALARME, json.dumps(alarme).encode(), qos=1)
+
+    # vaga PcD irregular = mais vagas PcD ocupadas do que carros PcD que entraram.
+    # O CPS2 nao sabe qual carro esta em qual vaga, so compara as contas.
+    nova = ""
+    if vagas_cps1 is not None:
+        pcd = [v["id"] for v in vagas_cps1.get("vagas", []) if v.get("tipo") == "pcd" and v.get("ocupada") and not v.get("interditada")]
+        pcd_dentro = len([c for c in dentro.values() if c["tipo"] == "pcd"])
+        if len(pcd) > pcd_dentro:
+            nova = pcd[-1]
+    if nova != irregular:
+        irregular = nova
+        print("Vaga PcD irregular:", irregular or "nenhuma")
+        if cliente:
+            alarme = {"tipo": "vaga_irregular", "ativo": irregular != "", "vaga": irregular}
+            cliente.publish(T_ALARME, json.dumps(alarme).encode(), qos=1)
 
 
-def estado_atual():
-    placas = [{"placa": p, "tipo": c["tipo"], "avulso": c["avulso"], "pago": c["pago"]}
-              for p, c in dentro.items()]
-    return {"cancela": cancela, "fim_curso": "aberta" if fim_de_curso.value() else "fechada",
-            "modo": modo, "carro": carro_presente,
-            "sentido": "saida" if chave_sentido.value() else "entrada",
+def estado_cancela():
+    placas = []
+    for p, c in dentro.items():
+        placas.append({"placa": p, "tipo": c["tipo"], "avulso": c["avulso"], "pago": c["pago"]})
+    return {"cancela": cancela,
+            "fim_curso": "aberta" if fim_de_curso.value() else "fechada",
+            "modo": modo, "carro": carro_presente, "sentido": sentido_da_chave(),
             "dentro": len(dentro), "placas": placas, "travada": travada,
-            "evasao": evasao, "vagas_ok": vagas_cps1 is not None, "ack": ultimo_ack}
+            "evasao": evasao, "vaga_irregular": irregular, "vagas_ok": vagas_cps1 is not None, "ack": ultimo_ack}
 
 
 def ao_receber(topico, msg):
-    global vagas_cps1, ultimo_ack, mudou_por_rede, restaurado
+    # o check_msg() chama essa funcao quando chega mensagem. Aqui so anota o que
+    # chegou; quem abre cancela e publica e o loop (tratar_pendentes).
+    global vagas_cps1, ultimo_ack, mudou_por_rede, restaurado, modo
     topico = topico.decode()
     if topico == T_CPS1_STATUS:
-        # CPS1 caiu (Last Will): as vagas guardadas ficaram velhas; esquece e não bloqueia por lotado
+        # CPS1 caiu (Last Will): as vagas guardadas ficaram velhas, esquece elas
         if msg == b"offline":
             vagas_cps1 = None
             mudou_por_rede = True
-            print("CPS1 offline: sem dado de vagas")
+            print("CPS1 offline, sem dado de vagas")
         return
+    if not msg:
+        return   # mensagem vazia = alguem apagou o retido do topico
     try:
-        dados = json.loads(msg) if msg else None
+        dados = json.loads(msg)
     except ValueError:
-        print("JSON inválido em", topico)
+        print("JSON invalido em", topico)
         return
     if not isinstance(dados, dict):
         return
+
     if topico == T_CPS1_SENSOR:
         vagas_cps1 = dados
     elif topico == T_ESTADO:
-        # Só na primeira vez: depois de reiniciar, relê quem estava dentro.
+        # so uma vez, depois de reiniciar: rele quem estava dentro e o modo
         if not restaurado:
             restaurado = True
             for c in dados.get("placas", []):
-                dentro[c["placa"]] = {"tipo": c.get("tipo", "comum"), "avulso": c.get("avulso", False),
-                                      "pago": c.get("pago", False)}
-            print("Estado restaurado:", len(dentro), "carros dentro")
+                if isinstance(c, dict) and isinstance(c.get("placa"), str):
+                    dentro[c["placa"]] = {"tipo": c.get("tipo", "comum"),
+                                          "avulso": c.get("avulso", False),
+                                          "pago": c.get("pago", False)}
+            if dados.get("modo") == "emergencia":
+                modo = "emergencia"
+            print("Estado restaurado:", len(dentro), "carros dentro, modo", modo)
     elif topico == T_PAGAMENTO:
         pendentes.append(("pagamento", dados))
     elif topico == T_CPS3_SENSOR:
-        # Pedido de ajuda no totem (CPS3): bip na cancela, onde fica o operador
         if dados.get("ajuda"):
             pendentes.append(("ajuda", dados))
     elif topico == T_COMANDO:
@@ -277,15 +336,16 @@ def ao_receber(topico, msg):
 
 
 def tratar_pendentes(cliente):
-    """Comandos chegam no callback e são executados aqui, fora dele."""
     global modo, mudou_por_rede
     while pendentes:
         tipo, dados = pendentes.pop(0)
+
         if tipo == "ajuda":
+            # pedido de ajuda no totem (CPS3): bip aqui, onde fica o operador
             apitar(250)
             evento(cliente, {"evento": "ajuda_totem"})
-            continue
-        if tipo == "pagamento":
+
+        elif tipo == "pagamento":
             placa = dados.get("placa")
             carro = dentro.get(placa)
             if carro and carro["avulso"]:
@@ -296,30 +356,29 @@ def tratar_pendentes(cliente):
                 evento(cliente, {"evento": "pagamento", "placa": placa, "ok": False,
                                  "motivo": "sem_entrada_avulsa"})
             mudou_por_rede = True
-            continue
-        if isinstance(dados.get("placa"), str):
-            sentido = dados.get("sentido") or ("saida" if chave_sentido.value() else "entrada")
-            if carro_presente:
-                placa_lida(cliente, dados["placa"].upper(), sentido)
-            else:
-                evento(cliente, {"evento": "negado", "placa": dados["placa"],
-                                 "motivo": "sem_carro_na_cancela"})
-        if dados.get("cancela") == "abrir":
-            abrir_cancela()
-            evento(cliente, {"evento": "abertura_manual"})
-            mudou_por_rede = True
-        if dados.get("modo") in ("normal", "emergencia") and dados["modo"] != modo:
-            modo = dados["modo"]
-            if modo == "emergencia":
+
+        else:
+            placa = dados.get("placa")
+            if isinstance(placa, str):
+                # camera simulada pelo dashboard; sem sentido usa a chave
+                leitura(cliente, placa.upper(), dados.get("sentido") or sentido_da_chave())
+            if dados.get("cancela") == "abrir":
                 abrir_cancela()
-            else:
-                fechar_cancela()
-            evento(cliente, {"evento": "modo", "modo": modo})
-            mudou_por_rede = True
+                evento(cliente, {"evento": "abertura_manual"})
+                mudou_por_rede = True
+            novo = dados.get("modo")
+            if novo in ("normal", "emergencia") and novo != modo:
+                modo = novo
+                if modo == "emergencia":
+                    abrir_cancela()
+                else:
+                    fechar_cancela()
+                evento(cliente, {"evento": "modo", "modo": modo})
+                mudou_por_rede = True
 
 
-# ===== CONEXÃO (conectar_wifi reaproveitado de Old/main.py) =====
 def conectar_wifi():
+    # espera ate 10 s pelo WiFi; se nao vier da erro e o loop tenta de novo depois
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     if not wlan.isconnected():
@@ -329,8 +388,8 @@ def conectar_wifi():
                 break
             time.sleep_ms(100)
     if not wlan.isconnected():
-        raise OSError("Wi-Fi não conectou")
-    print("Wi-Fi conectado, IP", wlan.ifconfig()[0])
+        raise OSError("WiFi nao conectou")
+    print("WiFi conectado, IP", wlan.ifconfig()[0])
 
 
 def conectar_mqtt():
@@ -339,90 +398,83 @@ def conectar_mqtt():
     cliente.set_callback(ao_receber)
     cliente.connect()
     cliente.publish(T_STATUS, "online", retain=True, qos=1)
-    cliente.subscribe(T_ESTADO, qos=1)        # para restaurar quem estava dentro
-    cliente.subscribe(T_CPS1_SENSOR, qos=1)
-    cliente.subscribe(T_COMANDO, qos=1)
-    cliente.subscribe(T_PAGAMENTO, qos=1)
-    cliente.subscribe(T_CPS1_STATUS, qos=1)
-    cliente.subscribe(T_CPS3_SENSOR, qos=1)
+    for t in (T_ESTADO, T_CPS1_SENSOR, T_CPS1_STATUS, T_CPS3_SENSOR, T_COMANDO, T_PAGAMENTO):
+        cliente.subscribe(t, qos=1)
     print("MQTT conectado como", CLIENT_ID)
     return cliente
 
 
 def tentar_conectar():
-    """Uma tentativa só. Sem rede, a cancela segue com as regras locais e tenta de novo depois."""
+    # tenta uma vez so, para a cancela nao parar esperando a rede
     try:
         conectar_wifi()
         return conectar_mqtt()
-    except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
-        print("Falha de conexão:", erro, "- seguindo offline")
+    except Exception as erro:
+        print("Falha ao conectar:", erro)
         return None
 
 
-# ===== PROGRAMA PRINCIPAL =====
-print("SmartPark 2.0 · CPS2 Cancela")
-pendentes = []
-carro_presente = False
+# Programa principal
+print("SmartPark 2.0 - CPS2 Cancela")
 cliente = tentar_conectar()
-proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
-# Espera o estado retido chegar antes de publicar, para não apagar quem estava dentro.
+
+# Espera ate 3 s o estado retido chegar, senao a primeira publicacao apagaria quem estava dentro
 inicio = time.ticks_ms()
 while cliente and not restaurado and time.ticks_diff(time.ticks_ms(), inicio) < 3000:
     try:
         cliente.check_msg()
-    except OSError:
+    except Exception as erro:   # retido malformado nao pode travar o boot
+        print("Erro ao restaurar:", erro)
         cliente = None
     time.sleep_ms(50)
 restaurado = True
-publicado = None
+if modo == "emergencia":   # reiniciou em emergencia: a cancela continua aberta
+    abrir_cancela()
+
+ultima_tentativa = time.ticks_ms()
 ultimo_ping = time.ticks_ms()
+publicado = None
 
 while True:
     try:
-        # Parte local: decide e atua com ou sem rede (sem rede, usa as últimas vagas recebidas).
+        # Parte local: decide com ou sem rede (sem rede usa as ultimas vagas recebidas)
         carro_presente = medir_distancia(trig, echo) < CARRO_CM
-        # Câmera simulada pelos botões (a interrupção guardou as placas em `lidas`).
         while lidas:
             placa = lidas.pop(0)
-            if placa in lidas:
-                continue   # mesmo botão duas vezes no mesmo instante: lê uma vez só
-            sentido = "saida" if chave_sentido.value() else "entrada"
-            if carro_presente:
-                placa_lida(cliente, placa, sentido)
-            else:
-                evento(cliente, {"evento": "negado", "placa": placa,
-                                 "motivo": "sem_carro_na_cancela"})
+            if placa not in lidas:   # mesmo botao duas vezes seguidas conta uma vez
+                leitura(cliente, placa, sentido_da_chave())
 
-        # Fecha sozinha depois do tempo (a não ser em emergência).
         if (cancela == "aberta" and modo == "normal"
                 and time.ticks_diff(time.ticks_ms(), aberta_em) > TEMPO_ABERTA_MS):
             fechar_cancela()
         conferir_alarmes(cliente)
-        atualizar_buzzer()
+        if buzzer.duty_u16() and time.ticks_diff(time.ticks_ms(), buzzer_ate) > 0:
+            buzzer.duty_u16(0)
 
-        # Parte de rede: se caiu, tenta de novo a cada RECONECTAR_MS sem travar a cancela.
+        # Parte de rede
         if cliente is None:
-            if time.ticks_diff(time.ticks_ms(), proxima_tentativa) >= 0:
+            if time.ticks_diff(time.ticks_ms(), ultima_tentativa) > RECONECTAR_MS:
                 cliente = tentar_conectar()
-                proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
+                ultima_tentativa = time.ticks_ms()
                 publicado = None
         else:
             for _ in range(5):
                 cliente.check_msg()
             tratar_pendentes(cliente)
-            texto = json.dumps(estado_atual())
+            texto = json.dumps(estado_cancela())
             if texto != publicado or mudou_por_rede:
-                cliente.publish(T_ESTADO, texto.encode(), retain=True)   # QoS 0: não trava o loop esperando confirmação
+                # QoS 0 para o loop nao ficar esperando confirmacao
+                cliente.publish(T_ESTADO, texto.encode(), retain=True)
                 publicado = texto
                 mudou_por_rede = False
             if time.ticks_diff(time.ticks_ms(), ultimo_ping) > PING_MS:
                 cliente.ping()
-                cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
+                cliente.publish(T_STATUS, "online", retain=True)
                 ultimo_ping = time.ticks_ms()
     except OSError as erro:
-        print("Conexão perdida:", erro, "- seguindo offline")
+        print("Conexao perdida:", erro)
         cliente = None
-        proxima_tentativa = time.ticks_ms()
+        ultima_tentativa = time.ticks_ms() - RECONECTAR_MS
     except Exception as erro:
-        print("Erro ignorado:", erro)
+        print("Erro:", erro)
     time.sleep_ms(100)

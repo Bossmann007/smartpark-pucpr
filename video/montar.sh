@@ -16,6 +16,7 @@
 #   video/montar.sh --intro motion   apresentação animada inteira + cenas
 #   video/montar.sh --intro nenhuma  só as cenas
 #   video/montar.sh --parcial        pula cenas sem gravação e usa silêncio onde falta fala
+#   video/montar.sh --acelerar       acelera (até 2x) a gravação que for mais longa que a fala
 # Variáveis (para testar): GRAVACOES, ROTEIRO, SAIDA, APRESENTACAO
 set -euo pipefail
 
@@ -27,6 +28,7 @@ SAIDA="${SAIDA:-$AQUI/smartpark-final.mp4}"
 APRESENTACAO="${APRESENTACAO:-$RAIZ/docs/apresentacao}"
 INTRO="abertura"
 PARCIAL=0
+ACELERAR=0
 FUNDO="0x07090d"
 
 erro() { printf 'ERRO: %s\n' "$*" >&2; exit 1; }
@@ -36,8 +38,9 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --intro) INTRO="${2:-}"; shift 2 ;;
     --parcial) PARCIAL=1; shift ;;
+    --acelerar) ACELERAR=1; shift ;;
     --saida) SAIDA="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) erro "opção desconhecida: $1 (veja --help)" ;;
   esac
 done
@@ -109,10 +112,16 @@ segmento() {
   local vdur adur dur pad fo
   vdur="$(duracao "$video")"; [ -n "$vdur" ] || erro "não consegui ler a duração de $video"
   adur=0; [ -n "$audio" ] && adur="$(duracao "$audio")"
+  # --acelerar: gravação mais longa que a fala é acelerada (até 2x) para acabar junto com a fala
+  local vel=1
+  if [ "$ACELERAR" = 1 ] && [ -n "$audio" ]; then
+    vel="$(awk -v v="$vdur" -v a="$adur" 'BEGIN { f = v / (a + 0.6); if (f < 1) f = 1; if (f > 2) f = 2; printf "%.4f", f }')"
+    vdur="$(awk -v v="$vdur" -v f="$vel" 'BEGIN { printf "%.3f", v / f }')"
+  fi
   read -r dur pad fo < <(awk -v v="$vdur" -v a="$adur" 'BEGIN { d = v; if (a + 0.6 > d) d = a + 0.6; p = d - v; f = (d - 0.6 < 6) ? d - 0.6 : 6; if (f < 0.8) f = 0.8; printf "%.3f %.3f %.3f\n", d, p, f }')
   local args=(-y -v error -i "$video")
   if [ -n "$audio" ]; then args+=(-i "$audio"); else args+=(-f lavfi -t "$dur" -i "anullsrc=r=48000:cl=stereo"); fi
-  local fv="[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=$FUNDO,setsar=1,fps=30"
+  local fv="[0:v]setpts=PTS/$vel,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=$FUNDO,setsar=1,fps=30"
   awk -v p="$pad" 'BEGIN { exit !(p > 0.001) }' && fv="$fv,tpad=stop_mode=clone:stop_duration=$pad"
   fv="$fv,format=yuv420p"
   local filtro

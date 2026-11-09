@@ -7,16 +7,16 @@ Este roteiro é a ordem exata da gravação. Cada cena vira dois arquivos em `vi
 | O que o enunciado pede | Onde aparece |
 |---|---|
 | Três Wokwi funcionando | Cena 01 (e todas as outras) |
-| Mensagens MQTT transmitidas | painel **Log MQTT** do dashboard em todas as cenas; Cena 12 |
-| Dashboard atualizando | Cenas 02 a 11 |
+| Mensagens MQTT transmitidas | painel **Log MQTT** do dashboard em todas as cenas; Cena 13 |
+| Dashboard atualizando | Cenas 02 a 12 |
 | Acionamento remoto de atuadores | Cena 04 (câmera do dashboard abre o servo), 07 (pagamento abre a saída), 09 (emergência), 10 (atender ajuda acende o LED azul; interditar vaga pisca o LED) |
-| Interação entre sistemas | Cenas 03 (vagas → totem), 05 (lotado → cancela), 06 (evasão), 08 (cancela travada → totem), 09 (emergência → os três), 11 (Last Will → totem) |
-| Explicações do item 9 | Cenas 01, 03, 05, 12 (e a abertura animada) |
+| Interação entre sistemas | Cenas 03 (vagas → totem), 05 (lotado → cancela), 06 (evasão), 08 (cancela travada → totem), 09 (emergência → os três), 11 (vaga PcD irregular → totem), 12 (Last Will → totem) |
+| Explicações do item 9 | Cenas 01, 03, 05, 13 (e a abertura animada) |
 
 ## Antes de gravar (uma vez)
 
-1. Terminal na raiz do repo: `uv run scripts/limpar_retidos.py --prefix cscf/smartpark` (começa sem estado velho no broker).
-2. Abrir os três projetos Wokwi, **cada um numa janela própria** (não em abas: aba escondida pausa a simulação). Lado a lado, em cima: CPS1 · Vagas, CPS2 · Cancela, CPS3 · Totem. Embaixo, ou numa quarta janela, o dashboard (`dashboard/index.html`).
+1. Terminal na raiz do repo: `uv run scripts/limpar_retidos.py --prefix cscf/equipe03` (começa sem estado velho no broker).
+2. Abrir os três projetos Wokwi, **cada um numa janela própria** (não em abas: aba escondida pausa a simulação). Lado a lado, em cima: CPS1 · Vagas, CPS2 · Cancela, CPS3 · Totem. Embaixo, ou numa quarta janela, o dashboard: rode `python3 -m http.server 8000 --directory dashboard` dentro de `smartpark-pucpr` e abra http://localhost:8000 (aberto direto pelo arquivo, o navegador bloqueia o `codigos/index.js`).
 3. Dar play nos três. Esperar no console serial de cada um: `MQTT conectado como smartpark-cpsN-…`.
 4. Conferir: `scripts/verify` sai com 0 (os três `online`, 4 vagas, resposta ao `ping`). Se não sair com 0, não grave.
 5. Estado inicial no Wokwi: todos os HC-SR04 em 400 cm (vagas livres, nenhum carro na cancela); no CPS2 as duas chaves à esquerda (sentido = entrada, fim de curso = fechada).
@@ -27,24 +27,19 @@ Nomes no dashboard (`dashboard/index.html`): abas **Operador**, **Pagar pelo cel
 
 Como mexer no Wokwi durante a simulação: clicar no HC-SR04 abre o controle deslizante de distância; clicar na chave deslizante muda o lado; clicar no botão aperta; clicar no PIR mostra "Simulate motion".
 
-## Narração gravada (06/11/2026)
+## Narração gravada (07/11/2026)
 
-A narração inteira foi gravada num arquivo só e cortada por cena em `video/gravacoes/fala01.m4a` … `fala12.m4a` (fora do git). Grave cada cena de tela com **pelo menos** a duração da fala; o `montar.sh` congela o último quadro se o vídeo for mais curto.
+Cada fala fica em `video/gravacoes/falaNN.m4a` (fora do git). Grave cada cena de tela com **pelo menos** a duração da fala; o `montar.sh` congela o último quadro se o vídeo for mais curto.
 
-| Cena | Fala gravada | Regravar? |
-|---|---|---|
-| 01 | 33,9 s | não |
-| 02 | 30,8 s | não |
-| 03 | 30,5 s | não |
-| 04 | 23,5 s | não |
-| 05 | 22,6 s | não |
-| 06 | 20,9 s | não |
-| 07 | 26,4 s | **sim**: a gravação diz que o QoS 1 "não pode se perder"; o texto novo explica que o broker confirma e entrega ao CPS2 conectado |
-| 08 | 16,7 s | **sim**: a gravação diz "o autodiagnóstico que a cancela de hoje não tem", que a pesquisa não confirma |
-| 09 | 15,1 s | não |
-| 10 | 26,9 s | recomendado: falta o bip do CPS2 quando o totem pede ajuda (o totem mudando outro ESP32) |
-| 11 | 18,1 s | recomendado: falta a cancela esquecendo as vagas velhas quando o CPS1 cai |
-| 12 | 52,8 s | não |
+| Fala | Situação |
+|---|---|
+| 00 | opcional (narração da abertura; sem ela a abertura sai muda) |
+| 01 a 10 | gravadas |
+| 11 | gravar (cena nova: vaga PcD irregular) |
+| 12 | gravar (era a 11; o texto ganhou a cancela esquecendo as vagas velhas) |
+| 13 | gravar (era a 12; QoS 1 explicado direito) |
+
+As telas das cenas 02 a 12 precisam ser regravadas com o código novo no Wokwi (o console antigo mostra "JSON invalido"). A tela da cena 13 é o motion, já pronta em `video/gravacoes/cena13.mp4`.
 
 ## Cena 01 · Os três ESP32 no ar
 
@@ -171,7 +166,20 @@ A narração inteira foi gravada num arquivo só e cortada por cena em `video/gr
 - **Fala:**
   > "O motorista aperta ajuda no totem. O CPS3 publica em cps3/sensor e o LED azul pisca enquanto espera. O CPS2 assina esse tópico e dá um bip na cancela, onde fica o operador: é o totem mudando outro ESP32. O operador vê o chamado e clica em atender: o dashboard publica em cps3/comando e o LED azul fica aceso. Do mesmo jeito, o operador interdita uma vaga: o CPS1 recebe o comando, pisca o LED e tira a vaga da conta, e o totem mostra a vaga em laranja. Comandos vão com QoS 1 e sem retain, para não serem executados de novo quando o ESP32 reconecta."
 
-## Cena 11 · Queda do CPS1 e Last Will
+## Cena 11 · Vaga PcD ocupada sem credencial
+
+- **Na tela:** CPS1, CPS2, a fita do totem e o painel **Alarmes** do dashboard. Começa como a cena 10 termina: só a PUC0R26 dentro, na V4, chave do CPS2 em saída.
+- **Ações:**
+  1. CPS1: HC-SR04 da V4 em 400 cm (o carro PcD deixou a vaga). Tem que ser antes da saída, senão o alarme dispara cedo.
+  2. CPS2: HC-SR04 em 20 cm e botão azul **Câmera: PUC0R26**. Mostrar `saída PUC0R26`. Esperar a cancela fechar; HC-SR04 em 400 cm.
+  3. CPS2: chave para a esquerda (entrada), HC-SR04 em 20 cm e botão verde **Câmera: ABC1D23**. Mostrar `entrada ABC1D23`. Esperar a cancela fechar; HC-SR04 em 400 cm.
+  4. CPS1: HC-SR04 da V4 em 20 cm (a ABC1D23 parou na vaga PcD). Mostrar o alarme **Vaga PcD V4 ocupada sem credencial** no dashboard, o LED vermelho do totem piscando e só a V4 piscando na fita.
+  5. CPS1: primeiro a V4 de volta a 400 cm, depois a V1 em 20 cm (o carro mudou de vaga; nessa ordem para não piscar evasão). Mostrar o alarme encerrando.
+- **Duração:** 40 s.
+- **Fala:**
+  > "Agora um caso que acontece em todo estacionamento: carro sem cadastro PcD parado na vaga PcD. O carro PcD sai e entra a ABC1D23, que é uma placa comum. Ela para na V4, a vaga PcD. O CPS1 publica que a V4 está ocupada, e o CPS2 sabe pela cancela que nenhum carro PcD entrou. Então o CPS2 publica o alarme de vaga irregular em cps2/alarme. O totem pisca só a V4 e o dashboard avisa o operador, que chama a fiscalização, porque quem multa é o agente de trânsito. O sistema não sabe qual carro está em qual vaga: ele compara as contas, como na evasão. O carro muda para a V1 e o alarme some."
+
+## Cena 12 · Queda do CPS1 e Last Will
 
 - **Na tela:** CPS1, CPS3 e o status no dashboard.
 - **Ações:**
@@ -182,21 +190,17 @@ A narração inteira foi gravada num arquivo só e cortada por cena em `video/gr
 - **Fala:**
   > "Agora o CPS1 cai sem avisar. Quem publica o offline é o broker, com o Last Will que o CPS1 deixou ao conectar. O totem e a cancela assinam esse status: o totem, em vez de mostrar um número velho, mostra quatro traços e pisca a fita em laranja, e a cancela esquece as vagas velhas e para de negar por lotado. Quando o CPS1 volta, ele reconecta, publica online e as vagas, e o totem volta ao número."
 
-## Cena 12 · As mensagens e o item 9
+## Cena 13 · As mensagens e o item 9
 
-- **Na tela:** painel **Log MQTT** do dashboard em tela cheia (ou o cliente web da HiveMQ assinando `cscf/smartpark/#`), rolando devagar pelos tópicos.
-- **Ações:**
-  1. Mostrar o log com tópico e JSON de cada mensagem.
-  2. Apontar `cps1/sensor`, `cps2/estado`, `cps2/alarme` e `cps2/comando`.
-  3. Terminar com as quatro janelas visíveis.
-- **Duração:** 60 s.
+- **Na tela:** trecho da apresentação animada (publicar × assinar e as 7 respostas), já pronto em `video/gravacoes/cena13.mp4`. Não precisa gravar tela.
+- **Duração:** 53 s.
 - **Fala:**
-  > "Aqui estão as mensagens passando pelo broker. O broker é o intermediário: todos conectam só nele, e cada mensagem que chega num tópico vira uma cópia para cada cliente que assinou esse tópico. Publicar é mandar para um tópico; assinar é pedir ao broker o que chegar nele, e quem publica não sabe quem assina. Cada CPS tem os tópicos sensor, estado, comando e status; o CPS2 tem também alarme; e há o pagamento. A mensagem do CPS1 chega ao CPS2 e ao CPS3 pelo broker, no callback; o callback lê o JSON e atualiza o estado, e o loop decide o atuador: o servo, o buzzer, os LEDs, o display. O dashboard é só mais um cliente, pelo WebSocket: assina os tópicos e publica os comandos. E as vantagens do MQTT: é leve para microcontrolador, desacopla quem publica de quem assina, tem QoS para o que não pode se perder, retain para o estado atual e Last Will para detectar quem caiu."
+  > "Aqui estão as mensagens passando pelo broker. O broker é o intermediário: todos conectam só nele, e cada mensagem que chega num tópico vira uma cópia para cada cliente que assinou esse tópico. Publicar é mandar para um tópico; assinar é pedir ao broker o que chegar nele, e quem publica não sabe quem assina. Cada CPS tem os tópicos sensor, estado, comando e status; o CPS2 tem também alarme; e há o pagamento. A mensagem do CPS1 chega ao CPS2 e ao CPS3 pelo broker, no callback; o callback lê o JSON e atualiza o estado, e o loop decide o atuador: o servo, o buzzer, os LEDs, o display. O dashboard é só mais um cliente, pelo WebSocket: assina os tópicos e publica os comandos. E as vantagens do MQTT: é leve para microcontrolador, desacopla quem publica de quem assina, tem QoS 1, em que o broker confirma o recebimento dos eventos e comandos, retain para o estado atual e Last Will para detectar quem caiu."
 
 ## Depois de gravar
 
 ```bash
-video/montar.sh                 # abertura animada (48 s) + cenas 01 a 12
+video/montar.sh                 # abertura animada (48 s) + cenas 01 a 13
 video/montar.sh --intro motion  # usa a apresentação animada inteira (5 min) no lugar da abertura
 video/montar.sh --parcial       # monta só com as cenas que já existem (para conferir)
 ```

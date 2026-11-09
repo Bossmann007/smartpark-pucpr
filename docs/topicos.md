@@ -1,6 +1,6 @@
 # Tabela de tópicos MQTT
 
-Prefixo: `cscf/smartpark/` (constante `PREFIXO` no topo de cada `main.py`; trocar `smartpark` pelo id da equipe). Mensagens em JSON, exceto `status`. Placas fictícias. Este arquivo é o contrato: o código dos três CPS e o dashboard seguem exatamente estes campos.
+Prefixo: `cscf/equipe03/` (constante `PREFIXO` no topo de cada `main.py`; `equipe03` é o id da equipe 3). Mensagens em JSON, exceto `status`. Placas fictícias. Este arquivo é o contrato: o código dos três CPS e o dashboard seguem exatamente estes campos.
 
 | Tópico | Publica | Assina | Mensagem (exemplo) | QoS / retain |
 |---|---|---|---|---|
@@ -9,11 +9,11 @@ Prefixo: `cscf/smartpark/` (constante `PREFIXO` no topo de cada `main.py`; troca
 | `cps1/comando` | dashboard | CPS1 | `{"manutencao": "V4", "ativo": true}` (interdita; `false` libera) ou `{"ping": "t1"}` | 1 / nunca retain |
 | `cps2/sensor` | CPS2 | dashboard | eventos, ver abaixo | 1 / não |
 | `cps2/estado` | CPS2 | CPS2 (só ao reiniciar), CPS1, CPS3, dashboard | ver abaixo | 0 / retain |
-| `cps2/alarme` | CPS2 | CPS3, dashboard | `{"tipo": "cancela_travada", "ativo": true}` ou `{"tipo": "evasao", "ativo": true, "diferenca": 1}` | 1 / não |
+| `cps2/alarme` | CPS2 | CPS3, dashboard | `{"tipo": "cancela_travada", "ativo": true}` ou `{"tipo": "evasao", "ativo": true, "diferenca": 1}` ou `{"tipo": "vaga_irregular", "ativo": true, "vaga": "V4"}` | 1 / não |
 | `cps2/comando` | dashboard | CPS2 | `{"placa": "XYZ9K87", "sentido": "entrada"}` (câmera simulada; sem `sentido` usa a chave), `{"cancela": "abrir"}`, `{"modo": "emergencia"}` / `{"modo": "normal"}`, `{"ping": "t1"}` | 1 / nunca retain |
 | `pagamento` | dashboard (pagar pelo celular) | CPS2 | `{"placa": "XYZ9K87", "valor": 7.0}` | 1 / não |
 | `cps3/sensor` | CPS3 | CPS2 (ajuda), dashboard | `{"presenca": true}` ou `{"ajuda": true}` | 0 (ajuda: 1) / não |
-| `cps3/estado` | CPS3 | dashboard | `{"display": 2, "led": "verde", "fita": ["vermelho", "verde", "amarelo", "azul"], "fita_pisca": false, "ajuda": "nenhuma", "brilho": "baixo", "presenca": false, "ack": "t1"}` | 0 / retain |
+| `cps3/estado` | CPS3 | dashboard | `{"display": 2, "led": "verde", "fita": ["vermelho", "verde", "amarelo", "azul"], "fita_pisca": false, "pisca_vaga": null, "ajuda": "nenhuma", "brilho": "baixo", "brilho_forcado": "auto", "presenca": false, "ack": "t1"}` | 0 / retain |
 | `cps3/comando` | dashboard | CPS3 | `{"ajuda": "atendido"}`, `{"brilho": "alto"}` (`"baixo"`, `"auto"`), `{"ping": "t1"}` | 1 / nunca retain |
 | `cps1/status`, `cps2/status`, `cps3/status` | cada ESP32 (Last Will) | CPS2 e CPS3 (só `cps1/status`), dashboard | texto `online` / `offline` | 1 / retain (a reafirmação de `online` a cada 10 s sai com QoS 0) |
 
@@ -33,7 +33,7 @@ Vaga interditada não conta como livre. Republicado a cada mudança e a cada 15 
 ```json
 {"cancela": "fechada", "fim_curso": "fechada", "modo": "normal", "carro": false, "sentido": "entrada",
  "dentro": 1, "placas": [{"placa": "ABC1D23", "tipo": "comum", "avulso": false, "pago": false}],
- "travada": false, "evasao": 0, "vagas_ok": true, "ack": "t1"}
+ "travada": false, "evasao": 0, "vaga_irregular": "", "vagas_ok": true, "ack": "t1"}
 ```
 `placas` serve para o CPS2 lembrar quem está dentro depois de reiniciar (ele relê o próprio retido uma vez).
 
@@ -60,6 +60,9 @@ Vaga interditada não conta como livre. Republicado a cada mudança e a cada 15 
 6. **Emergência:** dashboard publica `{"modo": "emergencia"}` → CPS2 abre e mantém; CPS1 (assina `cps2/estado`) pisca os LEDs; CPS3 pisca a fita em branco.
 7. **Ajuda no totem:** botão no CPS3 → `cps3/sensor` → o CPS2 dá um bip na cancela (onde fica o operador) e o dashboard mostra o chamado → operador responde em `cps3/comando` → LED azul fica aceso 10 s.
 8. **Confiabilidade:** CPS2 e CPS3 assinam `cps1/status`. Se o CPS1 cai (Last Will `offline`), o totem mostra `----` e a fita pisca laranja, e a cancela esquece as vagas velhas (`vagas_ok: false`) e para de negar por lotado até o CPS1 voltar.
+9. **Vaga PcD irregular:** CPS2 compara as vagas PcD ocupadas (CPS1) com os carros PcD cadastrados `dentro`. Mais vagas PcD ocupadas do que carros PcD = alguém sem cadastro PcD parou na vaga → `cps2/alarme` `vaga_irregular` → CPS3 pisca só aquela vaga na fita e o LED vermelho; o dashboard avisa o operador. O CPS2 não sabe qual carro está em qual vaga, só compara as contas.
+
+Se o CPS2 reinicia em emergência, ele relê o `modo` do próprio `cps2/estado` retido e a cancela continua aberta. Se o CPS2 cai em emergência, CPS1 e CPS3 continuam piscando com o último `modo` retido: é falha segura, a evacuação não para porque um equipamento saiu do ar.
 
 Em emergência a cancela fica aberta, mas continua registrando quem entra e sai pela câmera, para a conta de evasão não ficar errada depois.
 

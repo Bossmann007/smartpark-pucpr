@@ -1,11 +1,19 @@
-# SmartPark 2.0 · CPS3 Totem contador · Projeto CSCF 2026.2 (PUCPR)
-# Na entrada do estacionamento: mostra quantas vagas estão livres num display
-# de 7 segmentos, um LED verde/vermelho e uma fita NeoPixel com um LED por vaga.
-# Tudo vem do CPS1 pela rede. Se o CPS1 cai (Last Will), mostra "----".
-# Sensores próprios: PIR (alguém chegou: brilho alto) e botão de ajuda (interfone).
+# Equipe 3: Enzo Bossmann, Diego Feltrin e Gabriel Henrique
+# Projeto: SmartPark 2.0 - CPS3 Totem contador
+# Disciplina: Conectividade em Sistemas Ciberfisicos - PUCPR 2026.2
+# Placa: ESP32 + display TM1637 + 3 LEDs + fita NeoPixel (4) + PIR + botao | Comunicacao: MQTT
 #
-# Reaproveitado do SmartPark 2026.1 (Old/main.py): conectar_wifi() e a ideia
-# do "totem de vagas" (Old/imgs/puc-totem-vagas.jpg), agora medido vaga a vaga.
+# Logica: totem na entrada do estacionamento. Mostra quantas vagas estao
+# livres no display, LED verde/vermelho e um LED da fita para cada vaga.
+# Tudo vem do CPS1 pela rede. Se o CPS1 cair (Last Will) mostra "----".
+# Se o CPS2 avisar vaga PcD irregular, so o LED daquela vaga pisca.
+# Sensores proprios: PIR (chegou alguem = brilho alto) e botao de ajuda.
+#
+# Do SmartPark do semestre passado (Old/main.py) veio conectar_wifi() e a
+# ideia do totem de vagas (Old/imgs/puc-totem-vagas.jpg), agora vaga a vaga.
+#
+# Publica:  cps3/sensor (presenca, ajuda), cps3/estado, cps3/status
+# Assina:   cps1/sensor, cps1/status, cps2/alarme, cps2/estado, cps3/comando
 
 import json
 import random
@@ -17,16 +25,17 @@ from neopixel import NeoPixel
 from tm1637 import TM1637
 from umqtt.simple import MQTTClient
 
-# ===== CONFIGURAÇÃO =====
+# Configuracoes
 WIFI_SSID = "Wokwi-GUEST"
 WIFI_SENHA = ""
 BROKER = "broker.hivemq.com"
-PREFIXO = "cscf/smartpark"   # troque "smartpark" pelo id da equipe
+PREFIXO = "cscf/equipe03"
 try:
-    from sim_config import BROKER, PREFIXO  # só no teste local (sim/); não existe no Wokwi
+    from sim_config import BROKER, PREFIXO  # so existe no teste local (pasta sim/)
 except ImportError:
     pass
 
+# id com numero aleatorio porque no Wokwi todo ESP32 tem o mesmo MAC
 CLIENT_ID = "smartpark-cps3-%04x" % (random.getrandbits(16) ^ (time.ticks_us() & 0xFFFF))
 
 T_SENSOR = PREFIXO + "/cps3/sensor"
@@ -39,22 +48,22 @@ T_CPS2_ALARME = PREFIXO + "/cps2/alarme"
 T_CPS2_ESTADO = PREFIXO + "/cps2/estado"
 
 ATENDIDO_MS = 10000      # LED azul fica aceso esse tempo depois do atendimento
-PING_MS = 10000          # sinal de vida (keepalive = 30 s)
-RECONECTAR_MS = 5000     # sem rede: nova tentativa a cada 5 s, sem parar o totem
+PING_MS = 10000          # avisa o broker que esta vivo (keepalive de 30 s)
+RECONECTAR_MS = 5000     # sem rede, tenta de novo a cada 5 s
 
-# Cores da fita (R, G, B)
-VERDE = (0, 180, 0)
-AMARELO = (200, 140, 0)
-AZUL = (0, 60, 220)
-VERMELHO = (200, 0, 0)
-LARANJA = (220, 70, 0)
-BRANCO = (160, 160, 160)
-APAGADO = (0, 0, 0)
-COR_LIVRE = {"comum": VERDE, "idoso": AMARELO, "pcd": AZUL}
-NOME_COR = {VERDE: "verde", AMARELO: "amarelo", AZUL: "azul", VERMELHO: "vermelho",
-            LARANJA: "laranja", BRANCO: "branco", APAGADO: "apagado"}
+# Cores da fita (R, G, B). O totem guarda o nome da cor e so converte na hora de acender.
+CORES = {
+    "verde": (0, 180, 0),       # vaga comum livre
+    "amarelo": (200, 140, 0),   # vaga de idoso livre
+    "azul": (0, 60, 220),       # vaga PcD livre
+    "vermelho": (200, 0, 0),    # ocupada
+    "laranja": (220, 70, 0),    # interditada ou CPS1 fora do ar
+    "branco": (160, 160, 160),  # emergencia
+    "apagado": (0, 0, 0),
+}
+COR_LIVRE = {"comum": "verde", "idoso": "amarelo", "pcd": "azul"}
 
-# ===== PINOS =====
+# Pinos
 botao_ajuda = Pin(13, Pin.IN, Pin.PULL_UP)
 pir = Pin(27, Pin.IN)
 display = TM1637(clk=22, dio=21)
@@ -63,97 +72,107 @@ led_vermelho = Pin(16, Pin.OUT)
 led_azul = Pin(17, Pin.OUT)
 fita = NeoPixel(Pin(5), 4)
 
-# ===== ESTADO =====
-vagas = None             # última mensagem do CPS1
+# Estado
+vagas = None             # ultima mensagem do CPS1
 cps1_online = False
-alarmes = {}             # tipo -> ativo
+alarmes = {}             # tipo do alarme -> ativo
+irregular = ""           # vaga PcD ocupada sem credencial (vem do CPS2)
 emergencia = False
 presenca = False
 ajuda = "nenhuma"        # nenhuma -> aguardando -> atendida -> nenhuma
 atendida_em = 0
-brilho_forcado = None    # comando do dashboard: "alto" ou "baixo"
-apertou_ajuda = False    # preenchido pela interrupção do botão
+brilho_forcado = None    # comando do dashboard: "alto", "baixo" ou None (automatico)
+apertou_ajuda = False    # a interrupcao do botao marca aqui
 ultimo_ack = None
-mudou_por_rede = False
 
 
 def ao_receber(topico, msg):
-    global vagas, cps1_online, emergencia, ajuda, atendida_em, brilho_forcado
-    global ultimo_ack, mudou_por_rede
+    # o check_msg() chama essa funcao toda vez que chega mensagem de um topico assinado
+    global vagas, cps1_online, emergencia, ajuda, atendida_em, brilho_forcado, ultimo_ack, irregular
     topico = topico.decode()
-    texto = msg.decode() if msg else ""
     if topico == T_CPS1_STATUS:
-        cps1_online = texto == "online"
-        mudou_por_rede = True
+        cps1_online = msg == b"online"
         return
+    if not msg:
+        return   # mensagem vazia = alguem apagou o retido do topico
     try:
-        dados = json.loads(texto) if texto else None
+        dados = json.loads(msg)
     except ValueError:
-        print("JSON inválido em", topico)
+        print("JSON invalido em", topico)
         return
     if not isinstance(dados, dict):
         return
+
     if topico == T_CPS1_SENSOR:
         vagas = dados
     elif topico == T_CPS2_ALARME:
         alarmes[dados.get("tipo")] = dados.get("ativo", False)
+        if dados.get("tipo") == "vaga_irregular":
+            irregular = dados.get("vaga", "")
         print("Alarme:", dados)
     elif topico == T_CPS2_ESTADO:
         emergencia = dados.get("modo") == "emergencia"
-        # o estado é retido: corrige o alarme mesmo se a mensagem de fim do alarme se perdeu
+        # o estado e retido, entao corrige o alarme mesmo se o aviso de fim se perdeu
         alarmes["cancela_travada"] = dados.get("travada", False)
         alarmes["evasao"] = dados.get("evasao", 0) > 0
+        irregular = dados.get("vaga_irregular", "")
+        alarmes["vaga_irregular"] = irregular != ""
     elif topico == T_COMANDO:
         if "ping" in dados:
             ultimo_ack = dados["ping"]
         if dados.get("ajuda") == "atendido" and ajuda == "aguardando":
             ajuda = "atendida"
             atendida_em = time.ticks_ms()
-        if dados.get("brilho") in ("alto", "baixo", "auto"):
-            brilho_forcado = None if dados["brilho"] == "auto" else dados["brilho"]
-    mudou_por_rede = True
+        if dados.get("brilho") in ("alto", "baixo"):
+            brilho_forcado = dados["brilho"]
+        elif dados.get("brilho") == "auto":
+            brilho_forcado = None
 
 
 def calcular_saida():
-    """Decide o que o totem mostra a partir do que chegou pela rede.
-    Retorna as cores firmes; quem pisca é decidido em aplicar()."""
-    alarme = any(alarmes.values())
-    confiavel = cps1_online and vagas is not None
-    fita_pisca = False
-
-    if not confiavel:
+    # decide o numero, o LED e as cores da fita com o que chegou pela rede.
+    pisca_vaga = None   # posicao da vaga PcD irregular na fita (so ela pisca)
+    if not cps1_online or vagas is None:
+        # sem CPS1 o numero nao e confiavel
         numero = None
         led = "vermelho"
-        cores = [LARANJA] * 4
+        cores = ["laranja"] * 4
         fita_pisca = True
     else:
         numero = vagas.get("livres", 0)
-        # verde só se ainda cabe carro comum (é o que a cancela usa para negar)
+        # verde so se ainda cabe carro comum (e o que a cancela usa para negar)
         led = "verde" if vagas.get("livres_comuns", 0) > 0 else "vermelho"
+        fita_pisca = False
         cores = []
-        for v in vagas.get("vagas", []):
+        for i, v in enumerate(vagas.get("vagas", [])):
+            if v.get("id") == irregular:
+                pisca_vaga = i
             if v.get("interditada"):
-                cores.append(LARANJA)
+                cores.append("laranja")
             elif v.get("ocupada"):
-                cores.append(VERMELHO)
+                cores.append("vermelho")
             else:
-                cores.append(COR_LIVRE.get(v.get("tipo"), VERDE))
+                cores.append(COR_LIVRE.get(v.get("tipo"), "verde"))
     if emergencia:
-        cores = [BRANCO] * 4
+        cores = ["branco"] * 4
         fita_pisca = True
-    if alarme:
+    if True in alarmes.values():
         led = "vermelho_piscando"
-    return numero, led, cores, fita_pisca
+    return numero, led, cores, fita_pisca, pisca_vaga
 
 
-def aplicar(led, cores, fita_pisca, brilho_alto):
+def acender(led, cores, fita_pisca, pisca_vaga, brilho_alto):
     pisca = (time.ticks_ms() // 400) % 2 == 0
-    led_verde.value(1 if led == "verde" else 0)
-    led_vermelho.value(1 if led == "vermelho" or (led == "vermelho_piscando" and pisca) else 0)
-    led_azul.value(1 if ajuda == "atendida" or (ajuda == "aguardando" and pisca) else 0)
+    led_verde.value(led == "verde")
+    led_vermelho.value(led == "vermelho" or (led == "vermelho_piscando" and pisca))
+    led_azul.value(ajuda == "atendida" or (ajuda == "aguardando" and pisca))
     escala = 1.0 if brilho_alto else 0.25
     for i in range(4):
-        r, g, b = cores[i] if i < len(cores) and (pisca or not fita_pisca) else APAGADO
+        nome = "apagado"
+        apaga = fita_pisca or i == pisca_vaga
+        if i < len(cores) and (pisca or not apaga):
+            nome = cores[i]
+        r, g, b = CORES[nome]
         fita[i] = (int(r * escala), int(g * escala), int(b * escala))
     fita.write()
 
@@ -166,8 +185,8 @@ def mostrar_numero(numero, brilho_alto):
         display.numero(numero)
 
 
-# ===== CONEXÃO (conectar_wifi reaproveitado de Old/main.py) =====
 def conectar_wifi():
+    # espera ate 10 s pelo WiFi; se nao vier da erro e o loop tenta de novo depois
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     if not wlan.isconnected():
@@ -177,8 +196,8 @@ def conectar_wifi():
                 break
             time.sleep_ms(100)
     if not wlan.isconnected():
-        raise OSError("Wi-Fi não conectou")
-    print("Wi-Fi conectado, IP", wlan.ifconfig()[0])
+        raise OSError("WiFi nao conectou")
+    print("WiFi conectado, IP", wlan.ifconfig()[0])
 
 
 def conectar_mqtt():
@@ -194,39 +213,38 @@ def conectar_mqtt():
 
 
 def tentar_conectar():
-    """Uma tentativa só. Sem rede, o totem segue com os sensores próprios e tenta de novo depois."""
+    # tenta uma vez so, para o totem nao parar esperando a rede
     try:
         conectar_wifi()
         return conectar_mqtt()
-    except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
-        print("Falha de conexão:", erro, "- seguindo offline")
+    except Exception as erro:
+        print("Falha ao conectar:", erro)
         return None
 
 
-def ao_apertar_ajuda(pino):
+def ajuda_apertada(pino):
     global apertou_ajuda
     apertou_ajuda = True
 
 
-botao_ajuda.irq(trigger=Pin.IRQ_FALLING, handler=ao_apertar_ajuda)
+botao_ajuda.irq(trigger=Pin.IRQ_FALLING, handler=ajuda_apertada)
 
 
-# ===== PROGRAMA PRINCIPAL =====
-print("SmartPark 2.0 · CPS3 Totem")
+# Programa principal
+print("SmartPark 2.0 - CPS3 Totem")
 display.tracos()
 cliente = tentar_conectar()
-proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
-mostrado = "inicio"
-publicado = None
-avisar = []              # mensagens dos sensores esperando a rede voltar
+ultima_tentativa = time.ticks_ms()
 ultimo_ping = time.ticks_ms()
+mostrado = None
+publicado = None
+avisar = []   # avisos dos sensores esperando a rede voltar
 
 while True:
     try:
-        # Sensores próprios (funcionam com ou sem rede)
-        agora_presenca = pir.value() == 1
-        if agora_presenca != presenca:
-            presenca = agora_presenca
+        # Sensores proprios (funcionam com ou sem rede)
+        if (pir.value() == 1) != presenca:
+            presenca = not presenca
             avisar.append(({"presenca": presenca}, 0))
         if apertou_ajuda:
             apertou_ajuda = False
@@ -237,24 +255,22 @@ while True:
         if ajuda == "atendida" and time.ticks_diff(time.ticks_ms(), atendida_em) > ATENDIDO_MS:
             ajuda = "nenhuma"
 
-        # Sem conexão própria, o número das vagas não é confiável: mostra ----.
+        # Sem conexao propria o numero tambem nao e confiavel
         if cliente is None:
             cps1_online = False
 
-        # Atuadores
         brilho_alto = brilho_forcado == "alto" or (brilho_forcado is None and presenca)
-        numero, led, cores, fita_pisca = calcular_saida()
-        aplicar(led, cores, fita_pisca, brilho_alto)
-        chave = (numero, brilho_alto)
-        if chave != mostrado:       # o display só é reescrito quando muda
+        numero, led, cores, fita_pisca, pisca_vaga = calcular_saida()
+        acender(led, cores, fita_pisca, pisca_vaga, brilho_alto)
+        if (numero, brilho_alto) != mostrado:   # so reescreve o display quando muda
             mostrar_numero(numero, brilho_alto)
-            mostrado = chave
+            mostrado = (numero, brilho_alto)
 
-        # Parte de rede: se caiu, tenta de novo a cada RECONECTAR_MS sem travar o totem.
+        # Parte de rede
         if cliente is None:
-            if time.ticks_diff(time.ticks_ms(), proxima_tentativa) >= 0:
-                cliente = tentar_conectar()   # ao conectar, os retidos trazem vagas e status de volta
-                proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
+            if time.ticks_diff(time.ticks_ms(), ultima_tentativa) > RECONECTAR_MS:
+                cliente = tentar_conectar()   # os retidos trazem vagas e status de volta
+                ultima_tentativa = time.ticks_ms()
                 publicado = None
         else:
             for _ in range(5):
@@ -263,24 +279,24 @@ while True:
                 dados, qos = avisar[0]
                 cliente.publish(T_SENSOR, json.dumps(dados).encode(), qos=qos)
                 avisar.pop(0)
-            # Realimentação: publica o que o totem está mostrando (sem as piscadas)
+            # publica o que o totem esta mostrando
             estado = {"display": "----" if numero is None else numero, "led": led,
-                      "fita": [NOME_COR.get(c, "?") for c in cores], "fita_pisca": fita_pisca,
+                      "fita": cores, "fita_pisca": fita_pisca, "pisca_vaga": pisca_vaga,
                       "ajuda": ajuda, "brilho": "alto" if brilho_alto else "baixo",
+                      "brilho_forcado": brilho_forcado or "auto",
                       "presenca": presenca, "ack": ultimo_ack}
             texto = json.dumps(estado)
             if texto != publicado:
-                cliente.publish(T_ESTADO, texto.encode(), retain=True)   # QoS 0: não trava o loop
+                cliente.publish(T_ESTADO, texto.encode(), retain=True)
                 publicado = texto
-            mudou_por_rede = False
             if time.ticks_diff(time.ticks_ms(), ultimo_ping) > PING_MS:
                 cliente.ping()
-                cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
+                cliente.publish(T_STATUS, "online", retain=True)
                 ultimo_ping = time.ticks_ms()
     except OSError as erro:
-        print("Conexão perdida:", erro, "- seguindo offline")
+        print("Conexao perdida:", erro)
         cliente = None
-        proxima_tentativa = time.ticks_ms()
+        ultima_tentativa = time.ticks_ms() - RECONECTAR_MS
     except Exception as erro:
-        print("Erro ignorado:", erro)
+        print("Erro:", erro)
     time.sleep_ms(100)

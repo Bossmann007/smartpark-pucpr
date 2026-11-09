@@ -20,7 +20,7 @@ Fonte do requisito: enunciado do Projeto Final no Canvas (cópia local fora do r
 | `cps3-totem/main.py`, `tm1637.py`, `diagram.json` | botão, PIR, TM1637, LEDs, NeoPixel ×4 |
 | `sim/lib/*.py`, `sim/teste_integracao.py`, `sim/rodar.py` | hardware falso e teste de integração no MicroPython do computador |
 | `scripts/verify` | prova por MQTT contra os Wokwi reais |
-| `dashboard/index.html` | MQTT.js, operador, câmera, pagar pelo celular |
+| `dashboard/` (`index.html`, `estilos/index.css`, `codigos/index.js`) | MQTT.js, operador, câmera, pagar pelo celular |
 | `docs/`, `video/`, `docs/APRESENTACAO.md` | entregas e guia de fala |
 
 ## Esqueleto comum (todo `main.py`)
@@ -39,7 +39,7 @@ Pagamento real, câmera real, placas reais, login, banco de dados, hardware fís
 
 ## Pronto quando
 
-1. `uv run sim/teste_integracao.py` sai com 0 (feito: 53 verificações, 0 falhas em 57 s, 06/11/2026, depois das reviews).
+1. `uv run sim/teste_integracao.py` sai com 0 (feito: 64 verificações, 0 falhas, 08/11/2026, com a vaga PcD irregular e a emergência que sobrevive ao reinício).
 2. `scripts/verify` sai com 0 contra os três Wokwi rodando (prefixo real).
 3. Cada integração de `docs/topicos.md` foi vista acontecer uma vez e está no vídeo.
 4. Os 3 links Wokwi abrem em janela anônima.

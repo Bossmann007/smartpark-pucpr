@@ -202,9 +202,10 @@ def main():
         print("\n# 5. Lotado: placa comum negada, buzzer toca")
         t = time.time()
         pub("cps2/comando", {"placa": "QWE4R56", "sentido": "entrada"})
+        # o bip dura 0,6 s e o evento pode demorar mais que isso no broker publico: olha o buzzer primeiro
+        esperar("Buzzer ligado", lambda: saida("cps2")["pwm23"][1] > 0, 10)
         esperar("QWE4R56 negada por lotado",
                 lambda: evento_desde(t, lambda e: e["evento"] == "negado" and e.get("motivo") == "lotado"))
-        esperar("Buzzer ligado", lambda: saida("cps2")["pwm23"][1] > 0, 3)
         t = time.time()
         apertar("cps2", 27)
         esperar("PUC0R26 (PcD) entra mesmo sem vaga comum",
@@ -279,7 +280,30 @@ def main():
                 and j("cps3/estado")["fita"][3] == "laranja")
         pub("cps1/comando", {"manutencao": "V4", "ativo": False})
 
-        print("\n# 11. Queda e volta do CPS1 (Last Will)")
+        print("\n# 11. Vaga PcD ocupada sem credencial")
+        entrada("cps1", dist={33: 400, 34: 400, 35: 400})   # como no roteiro: V1 e V2 ja vazias depois da saida
+        entrada("cps2", pins={26: 1})
+        time.sleep(0.5)
+        t = time.time()
+        apertar("cps2", 27)
+        esperar("PUC0R26 sai", lambda: evento_desde(t, lambda e: e["evento"] == "saida" and e["placa"] == "PUC0R26"))
+        entrada("cps2", pins={26: 0})
+        time.sleep(0.5)
+        t = time.time()
+        apertar("cps2", 13)
+        esperar("ABC1D23 entra", lambda: evento_desde(t, lambda e: e["evento"] == "entrada" and e["placa"] == "ABC1D23"))
+        t = time.time()
+        entrada("cps1", dist={33: 20})
+        esperar("Alarme vaga PcD irregular na V4",
+                lambda: alarme_desde(t, "vaga_irregular", True) and j("cps2/estado")["vaga_irregular"] == "V4")
+        esperar("Totem pisca só a V4", lambda: j("cps3/estado")["pisca_vaga"] == 3
+                and j("cps3/estado")["led"] == "vermelho_piscando")
+        t = time.time()
+        entrada("cps1", dist={33: 400, 34: 20})   # o carro muda para a V1
+        esperar("Alarme vaga PcD encerrado", lambda: alarme_desde(t, "vaga_irregular", False))
+        esperar("Totem para de piscar a V4", lambda: j("cps3/estado")["pisca_vaga"] is None)
+
+        print("\n# 12. Queda e volta do CPS1 (Last Will)")
         matar("cps1")
         esperar("cps1/status = offline (LWT)", lambda: ultimo.get("cps1/status") == "offline", 30)
         esperar("Totem mostra ----", lambda: j("cps3/estado")["display"] == "----")
@@ -289,7 +313,7 @@ def main():
         esperar("Totem volta ao número", lambda: isinstance(j("cps3/estado")["display"], int), 15)
         esperar("CPS2 volta a ter vagas", lambda: j("cps2/estado")["vagas_ok"] is True, 20)
 
-        print("\n# 12. CPS2 reinicia sem esquecer quem está dentro")
+        print("\n# 13. CPS2 reinicia sem esquecer quem está dentro")
         antes = j("cps2/estado")["dentro"]
         matar("cps2")
         esperar("cps2/status = offline (LWT)", lambda: ultimo.get("cps2/status") == "offline", 30)
@@ -297,6 +321,19 @@ def main():
         esperar("cps2/status = online de novo", lambda: ultimo.get("cps2/status") == "online", 30)
         time.sleep(4)
         esperar(f"CPS2 restaurou dentro = {antes}", lambda: j("cps2/estado")["dentro"] == antes)
+
+        print("\n# 14. CPS2 reinicia em emergência e continua em emergência")
+        pub("cps2/comando", {"modo": "emergencia"})
+        esperar("CPS2 em emergência", lambda: j("cps2/estado")["modo"] == "emergencia")
+        matar("cps2")
+        esperar("cps2/status = offline (LWT)", lambda: ultimo.get("cps2/status") == "offline", 30)
+        iniciar("cps2")
+        esperar("cps2/status = online de novo", lambda: ultimo.get("cps2/status") == "online", 30)
+        time.sleep(4)
+        esperar("CPS2 voltou em emergência com a cancela aberta", lambda: j("cps2/estado")["modo"] == "emergencia"
+                and j("cps2/estado")["cancela"] == "aberta")
+        pub("cps2/comando", {"modo": "normal"})
+        esperar("Volta ao normal", lambda: j("cps2/estado")["modo"] == "normal")
     finally:
         for p in procs.values():
             if p.poll() is None:

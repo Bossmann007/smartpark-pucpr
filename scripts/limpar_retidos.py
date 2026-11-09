@@ -4,7 +4,7 @@
 # ///
 """Apaga os retidos de um prefixo (publica payload vazio com retain). Rodar antes de gravar o vídeo.
 
-Uso: uv run scripts/limpar_retidos.py --prefix cscf/smartpark
+Uso: uv run scripts/limpar_retidos.py --prefix cscf/equipe03
 """
 import argparse, time
 import paho.mqtt.client as mqtt

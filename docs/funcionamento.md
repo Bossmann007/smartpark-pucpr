@@ -38,4 +38,5 @@ Na operação real, ali fica uma câmera de leitura de placa (LPR). O cadastro e
 7. Evasão: ocupar uma vaga sem passar pela cancela → alarme de evasão.
 8. Emergência: comando do dashboard → cancela aberta, LEDs das vagas e fita piscando.
 9. Ajuda: botão no totem → chamado no dashboard → operador atende → LED azul aceso.
-10. Queda: parar o CPS1 → status `offline` (LWT), display do totem mostra `----`; reiniciar → volta.
+10. Vaga PcD irregular: o carro PcD sai, uma placa comum entra e para na V4 → alarme `vaga_irregular`, a V4 pisca no totem; o carro muda de vaga → alarme some.
+11. Queda: parar o CPS1 → status `offline` (LWT), display do totem mostra `----`; reiniciar → volta.

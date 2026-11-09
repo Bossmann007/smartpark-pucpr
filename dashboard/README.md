@@ -1,6 +1,6 @@
 # Dashboard
 
-Um único arquivo, `index.html`: HTML, CSS e JavaScript juntos, sem build e sem framework. As bibliotecas vêm de CDN, com versão fixa:
+Três arquivos, como na disciplina de Programação WEB: `index.html` (estrutura), `estilos/index.css` (visual) e `codigos/index.js` (MQTT, telas e gêmeo 3D). Sem build e sem framework. As bibliotecas vêm de CDN, com versão fixa:
 
 - MQTT.js 5.16.1 (`unpkg.com/mqtt@5.16.1`), que conecta ao broker por WebSocket
 - Three.js 0.170.0 (`unpkg.com/three@0.170.0`), usado no gêmeo digital 3D
@@ -25,7 +25,7 @@ Também funciona publicado em qualquer hospedagem estática (GitHub Pages, Verce
 | Parâmetro | Padrão | Exemplo |
 |---|---|---|
 | `broker` | `wss://broker.hivemq.com:8884/mqtt` | `?broker=wss://test.mosquitto.org:8081` |
-| `prefixo` | `cscf/smartpark` | `?prefixo=cscf/equipe7` |
+| `prefixo` | `cscf/equipe03` | `?prefixo=cscf/equipe7` |
 | `pagina` | operador | `?pagina=pagar` abre só a página do motorista; `?pagina=mapa` abre o mapa |
 
 O `client_id` é `smartpark-dash-` mais um número aleatório. Cada aba tem o seu, senão o broker derruba a aba anterior. Se a conexão cai, o MQTT.js reconecta sozinho a cada 2 s (`reconnectPeriod`) e assina de novo.
@@ -38,9 +38,9 @@ O `client_id` é `smartpark-dash-` mais um número aleatório. Cada aba tem o se
 - Indicadores: vagas livres (com gráfico da sessão e a divisão por tipo), carros dentro, cancela aberta/fechada e alarmes ativos.
 - Gêmeo digital 3D: as 4 vagas com a cor do tipo (verde comum, amarelo idoso, azul PcD; vermelho ocupada, laranja interditada), carros nas vagas ocupadas, carro parado na cancela, braço da cancela que abre e fecha pelo `cps2/estado`, totem com o número e a fita. Cada mensagem MQTT vira uma luz que sai do ESP32, passa pelo broker e chega em quem assina aquele tópico. A câmera gira sozinha; dá para arrastar e dar zoom.
 - CPS1: cada vaga com tipo, ocupada/livre/interditada, distância medida e LED (`cps1/estado`). Botão **Interditar/Liberar** publica `{"manutencao": "V2", "ativo": true|false}` em `cps1/comando`.
-- CPS2: cancela, fim de curso, modo, carro na cancela, sentido, quantos estão dentro e as placas (cadastrada, avulso a pagar, avulso pago), travada e evasão. Botões **Abrir cancela** (`{"cancela": "abrir"}`) e **Emergência** (`{"modo": "emergencia"}` / `{"modo": "normal"}`). **Câmera (simulada)**: placa e sentido viram `{"placa", "sentido"}` em `cps2/comando`. O CPS2 só lê a placa se o sensor vê um carro na cancela.
+- CPS2: cancela, fim de curso, modo, carro na cancela, sentido, quantos estão dentro e as placas (cadastrada, avulso a pagar, avulso pago), travada, evasão e vaga PcD irregular. Botões **Abrir cancela** (`{"cancela": "abrir"}`) e **Emergência** (`{"modo": "emergencia"}` / `{"modo": "normal"}`). **Câmera (simulada)**: placa e sentido viram `{"placa", "sentido"}` em `cps2/comando`. O CPS2 só lê a placa se o sensor vê um carro na cancela.
 - CPS3: espelho do totem com o display de 7 segmentos (ou `----`), o LED, as 4 cores da fita (piscando quando `fita_pisca`), ajuda, brilho e presença. **Atender ajuda** (`{"ajuda": "atendido"}`) fica destacado quando há chamado; brilho **Alto/Baixo/Auto (PIR)**.
-- Alarmes: cancela travada, evasão (com a diferença), pedido de ajuda, emergência e ESP32 offline, enquanto estiverem ativos.
+- Alarmes: cancela travada, evasão (com a diferença), vaga PcD irregular, pedido de ajuda, emergência e ESP32 offline, enquanto estiverem ativos.
 - Interação entre sistemas: linha do tempo em português dos eventos do `cps2/sensor` e das mudanças que um sistema causa no outro, por exemplo "CPS1 lotado, CPS2 negou QWE4R56", cada um com os sistemas envolvidos.
 - Log MQTT: as últimas 100 mensagens (hora, tópico sem prefixo, R para retida, payload), com filtro por texto e por sistema.
 

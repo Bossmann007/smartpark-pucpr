@@ -2,7 +2,7 @@
 
 Mede as 4 vagas com HC-SR04 e acende o LED verde (livre) ou vermelho (ocupada). Publica as vagas livres por tipo; a cancela (CPS2) e o totem (CPS3) usam esse dado.
 
-- Link do Wokwi: [colar aqui]
+- Link do Wokwi: https://wokwi.com/projects/480003924044144641
 - Arquivos: `main.py`, `diagram.json`
 - Ocupada abaixo de 50 cm, livre acima de 60 cm (histerese). No Wokwi, clique no HC-SR04 e mova o slider.
 

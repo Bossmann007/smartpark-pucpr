@@ -9,13 +9,13 @@ Passa (exit 0) só se: os 3 `status` retidos dizem `online`; `cps1/sensor`
 traz 4 vagas; e cada CPS responde ao `{"ping": X}` no seu `comando`
 republicando o `estado` com `"ack": X`.
 
-Uso: scripts/verify [--prefix cscf/smartpark] [--broker broker.hivemq.com] [--timeout 20]
+Uso: scripts/verify [--prefix cscf/equipe03] [--broker broker.hivemq.com] [--timeout 20]
 """
 import argparse, json, sys, time, uuid
 import paho.mqtt.client as mqtt
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--prefix", default="cscf/smartpark")
+ap.add_argument("--prefix", default="cscf/equipe03")
 ap.add_argument("--broker", default="broker.hivemq.com")
 ap.add_argument("--port", type=int, default=1883)
 ap.add_argument("--timeout", type=float, default=20)

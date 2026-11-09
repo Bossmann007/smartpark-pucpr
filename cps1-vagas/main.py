@@ -1,10 +1,17 @@
-# SmartPark 2.0 · CPS1 Vagas · Projeto CSCF 2026.2 (PUCPR)
-# Mede cada vaga com um HC-SR04 e acende o LED verde (livre) ou vermelho (ocupada).
-# Publica as vagas no broker; o CPS2 (cancela) e o CPS3 (totem) usam esse dado.
+# Equipe 3: Enzo Bossmann, Diego Feltrin e Gabriel Henrique
+# Projeto: SmartPark 2.0 - CPS1 Vagas
+# Disciplina: Conectividade em Sistemas Ciberfisicos - PUCPR 2026.2
+# Placa: ESP32 + 4x HC-SR04 + 8 LEDs | Comunicacao: MQTT
 #
-# Reaproveitado do SmartPark 2026.1 (Old/main.py): medir_distancia(),
-# atualizar_led() e conectar_wifi(). O resto é novo: 4 vagas com tipo,
-# assinatura de comandos, Last Will, retain e reconexão.
+# Logica: cada vaga tem um sensor de distancia. Carro perto do sensor = vaga
+# OCUPADA (LED vermelho), senao LIVRE (LED verde). O ESP32 publica as vagas
+# no broker e a cancela (CPS2) e o totem (CPS3) usam esse dado.
+#
+# Do SmartPark do semestre passado (Old/main.py) vieram medir_distancia(),
+# atualizar_led() e conectar_wifi(). O resto e novo.
+#
+# Publica:  cps1/sensor (vagas), cps1/estado (LEDs), cps1/status (online/offline)
+# Assina:   cps1/comando (dashboard) e cps2/estado (emergencia)
 
 import json
 import random
@@ -14,18 +21,18 @@ import network
 from machine import Pin, time_pulse_us
 from umqtt.simple import MQTTClient
 
-# ===== CONFIGURAÇÃO =====
+# Configuracoes
 WIFI_SSID = "Wokwi-GUEST"
 WIFI_SENHA = ""
 BROKER = "broker.hivemq.com"
-PREFIXO = "cscf/smartpark"   # troque "smartpark" pelo id da equipe
+PREFIXO = "cscf/equipe03"
 try:
-    from sim_config import BROKER, PREFIXO  # só no teste local (sim/); não existe no Wokwi
+    from sim_config import BROKER, PREFIXO  # so existe no teste local (pasta sim/)
 except ImportError:
     pass
 
-# Todo ESP32 do Wokwi tem o mesmo MAC, então o id leva um número aleatório.
-# Dois clientes com o mesmo id derrubam um ao outro no broker.
+# No Wokwi todo ESP32 tem o mesmo MAC, entao o id precisa de um numero aleatorio.
+# Se dois clientes usam o mesmo id, o broker derruba um deles.
 CLIENT_ID = "smartpark-cps1-%04x" % (random.getrandbits(16) ^ (time.ticks_us() & 0xFFFF))
 
 T_SENSOR = PREFIXO + "/cps1/sensor"
@@ -34,13 +41,14 @@ T_COMANDO = PREFIXO + "/cps1/comando"
 T_STATUS = PREFIXO + "/cps1/status"
 T_CPS2_ESTADO = PREFIXO + "/cps2/estado"
 
-LIMIAR_OCUPADA_CM = 50   # abaixo disso tem carro
-LIMIAR_LIVRE_CM = 60     # acima disso a vaga liberou (histerese evita piscar na borda)
-PING_MS = 10000          # sinal de vida para o broker (keepalive = 30 s)
-REPUBLICAR_MS = 15000    # republica as vagas mesmo sem mudança
-RECONECTAR_MS = 5000     # sem rede: nova tentativa a cada 5 s, sem parar os sensores
+# Ocupa abaixo de 50 cm e so libera acima de 60 cm, assim o LED nao fica piscando na borda
+LIMIAR_OCUPADA_CM = 50
+LIMIAR_LIVRE_CM = 60
+PING_MS = 10000          # avisa o broker que esta vivo (keepalive de 30 s)
+REPUBLICAR_MS = 15000    # republica as vagas mesmo se nada mudou
+RECONECTAR_MS = 5000     # sem rede, tenta de novo a cada 5 s
 
-# ===== PINOS =====
+# Pinos
 # (id, tipo, TRIG, ECHO, LED verde, LED vermelho)
 VAGAS = [
     ("V1", "comum", 5, 34, 2, 22),
@@ -62,15 +70,17 @@ for vid, tipo, trig, echo, verde, vermelho in VAGAS:
         "cm": 400,
     })
 
-# ===== ESTADO =====
-interditadas = []      # vagas que o operador tirou de uso
-emergencia = False     # vem do CPS2
+interditadas = []    # vagas que o operador tirou de uso pelo dashboard
+emergencia = False   # vem do CPS2
 ultimo_ack = None
+mudou_por_rede = False
 
 
-# ===== SENSOR E LEDS (reaproveitado de Old/main.py) =====
+# Funcoes
+
 def medir_distancia(trig, echo):
-    """Dispara um pulso ultrassônico e retorna a distância em cm (999 sem eco)."""
+    """Dispara um pulso ultrassonico e retorna a distancia em cm.
+    Retorna 999 se nao houver eco."""
     trig.off()
     time.sleep_us(2)
     trig.on()
@@ -79,18 +89,22 @@ def medir_distancia(trig, echo):
     duracao = time_pulse_us(echo, 1, 30000)
     if duracao < 0:
         return 999
-    # velocidade do som = 0,0343 cm/us; divide por 2 (ida e volta)
+    # velocidade do som = 0.0343 cm/us; divide por 2 (ida e volta)
     return duracao * 0.0343 / 2
 
 
 def atualizar_led(ocupada, verde, vermelho):
-    """Vermelho se a vaga está ocupada, senão verde."""
-    verde.value(0 if ocupada else 1)
-    vermelho.value(1 if ocupada else 0)
+    """Acende vermelho se a vaga esta ocupada, senao acende verde."""
+    if ocupada:
+        verde.off()
+        vermelho.on()
+    else:
+        verde.on()
+        vermelho.off()
 
 
 def ler_vagas():
-    """Lê os 4 sensores. Retorna True se alguma vaga mudou."""
+    # le os 4 sensores e devolve True se alguma vaga mudou
     mudou = False
     for v in vagas:
         cm = medir_distancia(v["trig"], v["echo"])
@@ -104,18 +118,21 @@ def ler_vagas():
     return mudou
 
 
+def piscando(v):
+    return emergencia or v["id"] in interditadas
+
+
 def acender_leds():
-    """Interditada ou emergência: LEDs piscam. Normal: verde ou vermelho."""
+    # vaga interditada ou emergencia: vermelho piscando
     pisca = (time.ticks_ms() // 500) % 2 == 0
     for v in vagas:
-        if emergencia or v["id"] in interditadas:
-            v["verde"].value(0)
-            v["vermelho"].value(1 if pisca else 0)
+        if piscando(v):
+            v["verde"].off()
+            v["vermelho"].value(pisca)
         else:
             atualizar_led(v["ocupada"], v["verde"], v["vermelho"])
 
 
-# ===== MENSAGENS =====
 def resumo_vagas():
     livres_tipo = {"comum": 0, "idoso": 0, "pcd": 0}
     lista = []
@@ -125,60 +142,67 @@ def resumo_vagas():
                       "interditada": interditada, "cm": v["cm"]})
         if not v["ocupada"] and not interditada:
             livres_tipo[v["tipo"]] += 1
-    livres = livres_tipo["comum"] + livres_tipo["idoso"] + livres_tipo["pcd"]
-    return {"vagas": lista, "livres": livres, "livres_comuns": livres_tipo["comum"],
-            "livres_tipo": livres_tipo, "total": len(vagas)}
+    return {"vagas": lista, "livres": sum(livres_tipo.values()),
+            "livres_comuns": livres_tipo["comum"], "livres_tipo": livres_tipo,
+            "total": len(vagas)}
 
 
-def estado_atual():
+def estado_leds():
     cores = []
     for v in vagas:
-        if emergencia or v["id"] in interditadas:
+        if piscando(v):
             cores.append("piscando")
+        elif v["ocupada"]:
+            cores.append("vermelho")
         else:
-            cores.append("vermelho" if v["ocupada"] else "verde")
+            cores.append("verde")
     return {"leds": cores, "interditadas": interditadas,
             "emergencia": emergencia, "ack": ultimo_ack}
 
 
 def publicar(cliente):
+    # retain=True: o broker guarda a ultima mensagem e quem conectar depois
+    # (totem, dashboard) ja recebe as vagas na hora, sem esperar a proxima.
+    # QoS 0: manda e nao espera confirmacao. Se uma se perder, em 15 s vai outra.
     cliente.publish(T_SENSOR, json.dumps(resumo_vagas()).encode(), retain=True)
-    cliente.publish(T_ESTADO, json.dumps(estado_atual()).encode(), retain=True)
+    cliente.publish(T_ESTADO, json.dumps(estado_leds()).encode(), retain=True)
 
 
 def ao_receber(topico, msg):
-    """Callback do MQTT: roda dentro do check_msg()."""
+    # o check_msg() chama essa funcao toda vez que chega mensagem de um topico assinado
     global emergencia, ultimo_ack, mudou_por_rede
     topico = topico.decode()
+    if not msg:
+        return   # mensagem vazia = alguem apagou o retido do topico
     try:
         dados = json.loads(msg)
     except ValueError:
-        print("JSON inválido em", topico)
+        print("JSON invalido em", topico)
         return
     if not isinstance(dados, dict):
         return
+
     if topico == T_COMANDO:
         if "ping" in dados:
             ultimo_ack = dados["ping"]
-        if "manutencao" in dados:
-            vid = dados["manutencao"]
-            if dados.get("ativo", True):
-                if vid not in interditadas:
-                    interditadas.append(vid)
-            elif vid in interditadas:
+        vid = dados.get("manutencao")
+        if vid:
+            if dados.get("ativo", True) and vid not in interditadas:
+                interditadas.append(vid)
+            elif not dados.get("ativo", True) and vid in interditadas:
                 interditadas.remove(vid)
-            print("Vagas interditadas:", interditadas)
+            print("Interditadas:", interditadas)
         mudou_por_rede = True
     elif topico == T_CPS2_ESTADO:
-        novo = dados.get("modo") == "emergencia"
-        if novo != emergencia:
-            emergencia = novo
-            print("Emergência:", emergencia)
+        nova = dados.get("modo") == "emergencia"
+        if nova != emergencia:
+            emergencia = nova
+            print("Emergencia:", emergencia)
             mudou_por_rede = True
 
 
-# ===== CONEXÃO (conectar_wifi reaproveitado de Old/main.py) =====
 def conectar_wifi():
+    # espera ate 10 s pelo WiFi; se nao vier da erro e o loop tenta de novo depois
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     if not wlan.isconnected():
@@ -188,17 +212,18 @@ def conectar_wifi():
                 break
             time.sleep_ms(100)
     if not wlan.isconnected():
-        raise OSError("Wi-Fi não conectou")
-    print("Wi-Fi conectado, IP", wlan.ifconfig()[0])
+        raise OSError("WiFi nao conectou")
+    print("WiFi conectado, IP", wlan.ifconfig()[0])
 
 
 def conectar_mqtt():
     cliente = MQTTClient(CLIENT_ID, BROKER, keepalive=30)
-    # Last Will: se este ESP32 cair sem avisar, o broker publica "offline" por ele.
+    # Last Will: se o ESP32 cair sem avisar, o broker publica "offline" no lugar dele
     cliente.set_last_will(T_STATUS, "offline", retain=True, qos=1)
     cliente.set_callback(ao_receber)
     cliente.connect()
     cliente.publish(T_STATUS, "online", retain=True, qos=1)
+    # qos=1: o broker entrega com confirmacao (pelo menos uma vez)
     cliente.subscribe(T_COMANDO, qos=1)
     cliente.subscribe(T_CPS2_ESTADO, qos=1)
     print("MQTT conectado como", CLIENT_ID)
@@ -206,54 +231,54 @@ def conectar_mqtt():
 
 
 def tentar_conectar():
-    """Uma tentativa só. Sem rede, o ESP32 segue com as regras locais e tenta de novo depois."""
+    # tenta uma vez so, para nao travar os sensores esperando a rede
     try:
         conectar_wifi()
         return conectar_mqtt()
-    except Exception as erro:   # OSError (rede) ou MQTTException (broker recusou)
-        print("Falha de conexão:", erro, "- seguindo offline")
+    except Exception as erro:
+        print("Falha ao conectar:", erro)
         return None
 
 
-# ===== PROGRAMA PRINCIPAL =====
-print("SmartPark 2.0 · CPS1 Vagas")
+# Programa principal
+print("SmartPark 2.0 - CPS1 Vagas")
 cliente = tentar_conectar()
-proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
-mudou_por_rede = False
+ultima_tentativa = time.ticks_ms()
 ultimo_ping = time.ticks_ms()
-ultima_publicacao = time.ticks_add(time.ticks_ms(), -REPUBLICAR_MS - 1)   # publica na 1ª volta
+ultima_publicacao = None   # None = publica na proxima volta
 
 while True:
-    # Parte local: sensores e LEDs funcionam com ou sem rede.
+    # Sensores e LEDs funcionam com ou sem rede
     mudou = ler_vagas()
     acender_leds()
-    agora = time.ticks_ms()
     if mudou:
         r = resumo_vagas()
         print("Vagas livres:", r["livres"], r["livres_tipo"])
 
-    # Parte de rede: se caiu, tenta de novo a cada RECONECTAR_MS sem travar a parte local.
     if cliente is None:
-        if time.ticks_diff(agora, proxima_tentativa) >= 0:
+        if time.ticks_diff(time.ticks_ms(), ultima_tentativa) > RECONECTAR_MS:
             cliente = tentar_conectar()
-            proxima_tentativa = time.ticks_add(time.ticks_ms(), RECONECTAR_MS)
-            ultima_publicacao = time.ticks_add(time.ticks_ms(), -REPUBLICAR_MS - 1)
+            ultima_tentativa = time.ticks_ms()
+            ultima_publicacao = None
     else:
         try:
             for _ in range(5):
                 cliente.check_msg()
-            if mudou or mudou_por_rede or time.ticks_diff(agora, ultima_publicacao) > REPUBLICAR_MS:
+            agora = time.ticks_ms()
+            if (mudou or mudou_por_rede or ultima_publicacao is None
+                    or time.ticks_diff(agora, ultima_publicacao) > REPUBLICAR_MS):
                 publicar(cliente)
                 ultima_publicacao = agora
                 mudou_por_rede = False
             if time.ticks_diff(agora, ultimo_ping) > PING_MS:
                 cliente.ping()
-                cliente.publish(T_STATUS, "online", retain=True)   # reafirma: um Last Will atrasado não fica valendo
+                # repete o "online" para um Last Will atrasado nao ficar valendo
+                cliente.publish(T_STATUS, "online", retain=True)
                 ultimo_ping = agora
         except OSError as erro:
-            print("Conexão perdida:", erro, "- seguindo offline")
+            print("Conexao perdida:", erro)
             cliente = None
-            proxima_tentativa = agora
+            ultima_tentativa = time.ticks_ms() - RECONECTAR_MS   # tenta de novo ja
         except Exception as erro:
-            print("Erro ignorado:", erro)
+            print("Erro:", erro)
     time.sleep_ms(200)

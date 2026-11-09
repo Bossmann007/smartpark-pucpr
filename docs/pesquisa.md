@@ -48,7 +48,7 @@ Duas decisões de arquitetura evitam perda de nota. A regra de negócio (saldo d
 
 ### Tabela de tópicos sugerida
 
-Prefixo: `pucpr/cscf/smartpark/<equipe>/` (o prefixo único evita colisão no broker compartilhado). A tabela é uma proposta própria, construída sobre o padrão de status com LWT retido da HiveMQ ([HiveMQ Essentials 9](https://www.hivemq.com/blog/mqtt-essentials-part-9-last-will-and-testament/)).
+Prefixo proposto na pesquisa (descartado; o projeto usa `cscf/equipe03`): `pucpr/cscf/smartpark/<equipe>/` (o prefixo único evita colisão no broker compartilhado). A tabela é uma proposta própria, construída sobre o padrão de status com LWT retido da HiveMQ ([HiveMQ Essentials 9](https://www.hivemq.com/blog/mqtt-essentials-part-9-last-will-and-testament/)).
 
 | Tópico (após o prefixo) | Pub → Sub | Payload exemplo | QoS / retain |
 |---|---|---|---|

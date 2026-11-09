@@ -14,7 +14,7 @@ Mesmo formato do TDE de Web: primeiro como usar a apresentação animada, depois
 | R | reinicia do zero |
 | N | abre as notas do apresentador numa janela separada (Na tela, Falar, Mais para falar, Se perguntarem), sincronizada com a parte atual; as teclas também funcionam com a janela de notas em foco |
 
-São 16 partes, 4:59 no total: abertura 3D, problema, de onde viemos, arquitetura, publicar × assinar, as 8 integrações, ciclo CPS, respostas do item 9 e fechamento. Abra em tela cheia, aperte N, arraste a janela de notas para o outro monitor (ou para o lado) e aperte Espaço. `?parte=5` na URL começa na parte 6 (conta do zero).
+São 17 partes, 5:11 no total: abertura 3D, problema, de onde viemos, arquitetura, publicar × assinar, as 9 integrações, ciclo CPS, respostas do item 9 e fechamento. Abra em tela cheia, aperte N, arraste a janela de notas para o outro monitor (ou para o lado) e aperte Espaço. `?parte=5` na URL começa na parte 6 (conta do zero).
 
 As mensagens das integrações são o log real de `sim/teste_integracao.py` (os três `main.py` rodando contra o broker), copiado para `docs/apresentacao/mqtt-log.jsonl`. O 3D usa os prédios do OpenStreetMap (`docs/apresentacao/puc-osm.json`).
 
@@ -25,7 +25,7 @@ cd docs/apresentacao
 npm install                 # uma vez: three, fontes Inter e JetBrains Mono, playwright-core
 python3 build.py            # apresentacao-animada.html e ../FOLHAS.md
 node render.mjs --partes abertura,arquitetura --saida abertura.mp4   # 48 s
-node render.mjs --saida motion.mp4                                   # as 16 partes, ~10 min para renderizar
+node render.mjs --saida motion.mp4                                   # as 17 partes, ~10 min para renderizar
 node render.mjs --quadros 3,96,150 --pasta frames                    # PNGs para conferir o layout
 ```
 
@@ -36,14 +36,14 @@ O `render.mjs` usa o Brave (ou o Chrome) sem janela, chama `window.renderAt(t)` 
 **Montar o vídeo final:**
 
 ```bash
-video/montar.sh                    # abertura.mp4 + cenas 01 a 12 → video/smartpark-final.mp4
+video/montar.sh                    # abertura.mp4 + cenas 01 a 13 → video/smartpark-final.mp4
 video/montar.sh --intro motion     # usa a apresentação animada inteira no lugar da abertura
 video/montar.sh --parcial          # monta só com o que já foi gravado
 ```
 
 O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala, congela o último quadro se a fala for mais longa e mostra o título da cena no canto nos primeiros segundos. Se faltar arquivo, ele lista o que falta e para.
 
-**Apresentando ao vivo:** a apresentação animada no telão, as notas (N) na sua tela; nas integrações, pause (Espaço) para responder pergunta. Se o professor pedir para ver rodando, troque para as janelas do Wokwi e siga as cenas 02 a 11 do roteiro.
+**Apresentando ao vivo:** a apresentação animada no telão, as notas (N) na sua tela; nas integrações, pause (Espaço) para responder pergunta. Se o professor pedir para ver rodando, troque para as janelas do Wokwi e siga as cenas 02 a 12 do roteiro.
 
 ## Cola rápida (para decorar)
 
@@ -57,11 +57,11 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 
 **Os três sistemas, uma linha cada**
 - **CPS1 Vagas:** HC-SR04 em cada vaga → LED verde ou vermelho → publica as vagas livres.
-- **CPS2 Cancela:** câmera lê a placa → decide → servo abre ou nega com buzzer; detecta cancela travada e evasão.
+- **CPS2 Cancela:** câmera lê a placa → decide → servo abre ou nega com buzzer; detecta cancela travada, evasão e vaga PcD irregular.
 - **CPS3 Totem:** mostra as vagas livres no display, na fita de LEDs e no LED; botão de ajuda chama o operador.
 
 **O caminho de uma mensagem**
-- ESP32 publica em `cscf/smartpark/cps1/sensor` → o broker HiveMQ recebe → entrega a todos que assinaram esse tópico (CPS2, CPS3 e dashboard).
+- ESP32 publica em `cscf/equipe03/cps1/sensor` → o broker HiveMQ recebe → entrega a todos que assinaram esse tópico (CPS2, CPS3 e dashboard).
 - Ninguém fala direto com ninguém: só com o broker.
 
 **As integrações que a demo mostra**
@@ -73,6 +73,7 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 6. Emergência → tudo abre e pisca.
 7. Ajuda no totem → operador atende → LED azul aceso.
 8. CPS1 cai → totem mostra `----` (Last Will).
+9. Vaga PcD ocupada sem carro PcD cadastrado dentro → totem pisca a vaga, dashboard avisa.
 
 **MQTT em 5 palavras:** broker · publicar · assinar · retain · Last Will.
 
@@ -85,10 +86,10 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 | 3 De onde viemos (28 s) | fotos do 2026.1, reuso e novo | o que foi reaproveitado, função por função |
 | 4 Arquitetura (24 s) | 3 ESP32, broker, dashboard; ping do verify | tudo passa pelo broker; TCP 1883 e WSS 8884 |
 | 5 Publicar × assinar (28 s) | SUBSCRIBE, PUBLISH, dashboard publica; QoS, retain, Last Will | papel do broker |
-| 6 a 13 Integrações (101 s) | as 8 integrações com o JSON real do teste | o dado de um CPS muda o atuador de outro |
-| 14 Ciclo CPS (22 s) | aquisição → processamento → conectividade → atuação → realimentação | item 6 |
-| 15 Item 9 (38 s) | as 7 perguntas com resposta curta | item 9 |
-| 16 Fechamento (12 s) | 3 ESP32 · 1 broker · 1 dashboard · 14 tópicos · 8 integrações | MQTT em 5 palavras |
+| 6 a 14 Integrações (113 s) | as 9 integrações com o JSON real do teste | o dado de um CPS muda o atuador de outro |
+| 15 Ciclo CPS (22 s) | aquisição → processamento → conectividade → atuação → realimentação | item 6 |
+| 16 Item 9 (38 s) | as 7 perguntas com resposta curta | item 9 |
+| 17 Fechamento (12 s) | 3 ESP32 · 1 broker · 1 dashboard · 14 tópicos · 9 integrações | MQTT em 5 palavras |
 
 ## Cenas do vídeo da demonstração (ordem de `video/roteiro.md`)
 
@@ -104,13 +105,14 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 | 08 | dashboard abre a cancela; fim de curso continua aberto → alarme | autodiagnóstico da cancela |
 | 09 | emergência pelo dashboard: cancela aberta, LEDs e fita piscando | um comando, três sistemas |
 | 10 | ajuda no totem → atender → LED azul; interditar V3 | comandos com QoS 1 sem retain |
-| 11 | parar o CPS1 → `offline`, totem `----`; volta | Last Will e reconexão |
-| 12 | log de mensagens | item 9 completo |
+| 11 | PcD sai, `ABC1D23` entra e para na V4 → alarme vaga PcD irregular; muda para a V1 | o CPS2 compara vagas PcD ocupadas com carros PcD dentro |
+| 12 | parar o CPS1 → `offline`, totem `----`; volta | Last Will e reconexão |
+| 13 | motion: publicar × assinar e as 7 respostas | item 9 completo |
 
 ## Glossário rápido
 
 - **Broker:** servidor que recebe toda mensagem e entrega a quem assinou o tópico. Aqui, o HiveMQ público.
-- **Tópico:** endereço da mensagem, em níveis separados por `/` (`cscf/smartpark/cps2/estado`).
+- **Tópico:** endereço da mensagem, em níveis separados por `/` (`cscf/equipe03/cps2/estado`).
 - **Publicar:** mandar uma mensagem para um tópico. Quem publica não sabe quem vai receber.
 - **Assinar:** pedir ao broker para receber tudo o que chegar num tópico. `#` assina todos os níveis abaixo.
 - **QoS 0 / 1:** 0 entrega no máximo uma vez, sem confirmação (leituras periódicas); 1 entrega pelo menos uma vez, com confirmação (comandos, pagamento, alarmes).
@@ -138,7 +140,7 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 > No callback do `umqtt` (chamado dentro do `check_msg()`), o ESP32 lê o JSON e atualiza o estado; o loop principal decide o atuador. O CPS2 guarda o `cps1/sensor` e só gira o servo se há vaga do tipo da placa (placa sem cadastro entra como avulso, tipo comum); comandos do dashboard vão para uma fila e são executados no loop, fora do callback. O CPS3 recebe o `cps1/sensor` e reescreve display, LED e fita; o CPS1 recebe o `cps2/estado` e pisca os LEDs na emergência. A decisão usa um dado que veio de outro ESP32 pela rede.
 
 **6. Como o dashboard participa da comunicação MQTT?**
-> Ele é só mais um cliente do broker, pelo WebSocket seguro (`wss`, porta 8884), com `client_id` único por aba. Assina `cscf/smartpark/#` para mostrar tudo e publica nos tópicos `comando` (câmera simulada, abrir cancela, emergência, interditar vaga, atender ajuda, brilho) e `pagamento`. Não fala direto com nenhum ESP32.
+> Ele é só mais um cliente do broker, pelo WebSocket seguro (`wss`, porta 8884), com `client_id` único por aba. Assina `cscf/equipe03/#` para mostrar tudo e publica nos tópicos `comando` (câmera simulada, abrir cancela, emergência, interditar vaga, atender ajuda, brilho) e `pagamento`. Não fala direto com nenhum ESP32.
 
 **7. Quais as vantagens do MQTT em sistemas ciberfísicos distribuídos?**
 > É leve (cabeçalho fixo a partir de 2 bytes, bom para microcontrolador), desacopla quem publica de quem assina (dá para adicionar um quarto CPS sem mudar os outros), tem QoS para mensagens importantes, retain para o estado atual e Last Will para detectar falha. Funciona em rede instável porque o cliente reconecta e o broker guarda o estado.
@@ -188,6 +190,42 @@ O script põe tudo em 1920x1080 a 30 fps, troca o áudio da gravação pela fala
 
 **Quanto tempo o broker leva para soltar o Last Will?**
 > Se a conexão TCP fecha, na hora. Se ela fica muda, depois de 1,5 × o keepalive: 1,5 × 30 s = 45 s.
+
+**O alarme de vaga PcD erra?**
+> Erra nos dois sentidos, e a gente sabe por quê: o CPS2 só compara contas (vagas PcD ocupadas × carros PcD cadastrados dentro), não sabe qual carro está em qual vaga. Se o carro PcD parar numa vaga comum e um comum parar na V4, as contas empatam e o alarme não toca. Se um motorista PcD entrar com um carro sem cadastro, ele entra como avulso (tipo comum) e o alarme toca. Para acertar sempre, precisaria de leitura de placa ou de credencial em cada vaga.
+
+**O SmartPark multa ou trava o carro?**
+> Não. Ele só avisa o operador, que chama a fiscalização. Quem multa é o agente de trânsito: o CTB vale também em estacionamento privado de uso coletivo (art. 2º, parágrafo único) e estacionar na vaga PcD sem credencial é infração gravíssima (art. 181, XX). A reserva de vagas vem da Lei 10.741/2003, art. 41 (idoso, 5%) e da Lei 13.146/2015, art. 47 (PcD, 2%, no mínimo 1).
+
+**Se o CPS1 cair, a cancela deixa todo mundo entrar?**
+> Deixa, de propósito: sem dado de vagas, a cancela não nega ninguém por lotado. É falha segura, porque negar entrada com um dado velho é pior que deixar entrar. O totem mostra ---- para ninguém confiar no número.
+
+**Por que não QoS 2 e por que não sessão persistente?**
+> QoS 2 garante exatamente uma vez, mas custa quatro mensagens por publicação e o umqtt.simple não implementa. O nosso código aguenta duplicata (QoS 1). Sessão persistente (clean_session=False) guardaria comandos para um ESP32 desconectado; a gente preferiu sessão limpa e estado retido, para um comando velho não ser executado quando o ESP32 volta.
+
+**Publicar com QoS 1 trava o loop?**
+> O umqtt.simple espera o PUBACK do broker antes de seguir. Por isso só eventos, alarmes e comandos vão com QoS 1 (são raros); leituras e estado, que saem toda hora, vão com QoS 0. Se a conexão cair de vez, dá OSError e o loop reconecta. Limitação conhecida: o umqtt.simple não põe timeout nessa espera nem confere a resposta do ping, então numa conexão meio aberta (o Wi-Fi some sem fechar o TCP) o ESP32 pode ficar parado esperando. A correção seria `umqtt.robust` ou timeout no socket.
+
+**Por que ping e online a cada 10 s?**
+> O ping mantém a conexão viva dentro do keepalive de 30 s (sem ele o broker derrubaria o ESP32 e soltaria o Last Will). Republicar online é uma garantia barata: se alguém apagou o retido do status, ele volta em até 10 s.
+
+**O que é o # no `cscf/equipe03/#`?**
+> Curinga de vários níveis: assina tudo abaixo de `cscf/equipe03/`. O `+` é curinga de um nível só, por exemplo `cscf/equipe03/+/status` pega o status dos três.
+
+**Por que comando nunca vai com retain?**
+> Retido é entregue de novo a todo mundo que assina depois. Um `{"cancela": "abrir"}` retido abriria a cancela toda vez que o CPS2 reiniciasse. Estado vai retido (é a foto do agora); comando é uma ação que acontece uma vez.
+
+**Por que o client_id tem um número aleatório?**
+> O broker só aceita uma conexão por client_id: se outra entra com o mesmo, ele derruba a primeira. No broker público, com o Wokwi reabrindo a simulação e o dashboard aberto em duas abas, um id fixo faria um derrubar o outro em loop.
+
+**E se o CPS2 cair em emergência?**
+> CPS1 e CPS3 continuam piscando com o último `modo` retido: falha segura, a evacuação não para porque um equipamento saiu do ar. Quando o CPS2 volta, ele relê o próprio estado retido, continua em emergência e mantém a cancela aberta até o operador voltar ao normal.
+
+**E se o retido do CPS2 chegar depois dos 3 s quando ele reinicia?**
+> Ele começa com a lista vazia e publica isso, apagando quem estava dentro. No broker público o retido chega em menos de 1 s; os 3 s são margem. Antes de gravar, rodar `scripts/limpar_retidos.py` para não sobrar estado de outro teste.
+
+**O HC-SR04 da cancela dispara a câmera?**
+> Ele habilita a leitura: sem carro parado na cancela, a placa lida é negada (`sem_carro_na_cancela`). No Wokwi a "câmera" é um botão por placa ou a placa digitada no dashboard.
 
 **As 6 funções do broker?**
 > Receber as mensagens, filtrar pelo tópico, entregar aos assinantes, gerenciar as conexões (incluindo Last Will e keepalive), garantir o QoS combinado e cuidar da segurança (autenticação e autorização). Também guarda as mensagens retidas.

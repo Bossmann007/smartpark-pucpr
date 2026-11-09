@@ -1,10 +1,10 @@
-# Driver mínimo do display de 7 segmentos TM1637 (4 dígitos) para MicroPython.
-# Protocolo de 2 fios (CLK e DIO): início, bytes com o bit menos significativo
-# primeiro, um pulso de confirmação (ack) por byte e fim.
+# Driver simples do display TM1637 (4 digitos de 7 segmentos).
+# Usa 2 fios (CLK e DIO): inicio, bytes com o bit menos significativo
+# primeiro, um pulso de confirmacao (ack) depois de cada byte e fim.
 import time
 from machine import Pin
 
-# Segmentos de cada dígito (bit 0 = segmento a ... bit 6 = segmento g)
+# segmentos de cada numero (bit 0 = segmento a ... bit 6 = segmento g)
 DIGITOS = [0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F]
 TRACO = 0x40
 APAGADO = 0x00
@@ -17,54 +17,52 @@ class TM1637:
         self.brilho = brilho
         self.mostrar([APAGADO] * 4)
 
-    def _espera(self):
+    def espera(self):
         time.sleep_us(10)
 
-    def _inicio(self):
+    def inicio(self):
         self.dio(0)
-        self._espera()
+        self.espera()
         self.clk(0)
-        self._espera()
+        self.espera()
 
-    def _fim(self):
+    def fim(self):
         self.dio(0)
-        self._espera()
+        self.espera()
         self.clk(1)
-        self._espera()
+        self.espera()
         self.dio(1)
 
-    def _byte(self, b):
+    def enviar_byte(self, b):
         for i in range(8):
             self.dio((b >> i) & 1)
-            self._espera()
+            self.espera()
             self.clk(1)
-            self._espera()
+            self.espera()
             self.clk(0)
-            self._espera()
-        # pulso de confirmação (o TM1637 puxa DIO para baixo; não lemos)
-        self.clk(0)
-        self._espera()
+            self.espera()
+        # pulso do ack (o TM1637 puxa o DIO para baixo, a gente nao le)
         self.clk(1)
-        self._espera()
+        self.espera()
         self.clk(0)
-        self._espera()
+        self.espera()
 
     def mostrar(self, segmentos):
-        """Escreve os 4 dígitos (lista de 4 bytes de segmentos) e liga o display."""
-        self._inicio()
-        self._byte(0x40)            # escrita com endereço automático
-        self._fim()
-        self._inicio()
-        self._byte(0xC0)            # começa no dígito 0
+        """Escreve os 4 digitos e liga o display."""
+        self.inicio()
+        self.enviar_byte(0x40)   # modo escrita, endereco anda sozinho
+        self.fim()
+        self.inicio()
+        self.enviar_byte(0xC0)   # comeca no primeiro digito
         for s in segmentos:
-            self._byte(s)
-        self._fim()
-        self._inicio()
-        self._byte(0x88 | (self.brilho & 7))   # display ligado + brilho 0..7
-        self._fim()
+            self.enviar_byte(s)
+        self.fim()
+        self.inicio()
+        self.enviar_byte(0x88 | (self.brilho & 7))   # liga o display com brilho de 0 a 7
+        self.fim()
 
     def numero(self, n):
-        """Número de 0 a 9999 alinhado à direita, sem zeros à esquerda."""
+        """Mostra um numero de 0 a 9999 alinhado a direita."""
         texto = str(max(0, min(9999, n)))
         texto = " " * (4 - len(texto)) + texto
         self.mostrar([APAGADO if c == " " else DIGITOS[int(c)] for c in texto])
