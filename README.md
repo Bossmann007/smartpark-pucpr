@@ -1,19 +1,56 @@
-# SmartPark 2.0 · PUCPR
+<p align="center">
+  <img src="docs/img/capa.png" alt="SmartPark 2.0" width="100%">
+</p>
 
-Estacionamento sem parar na cancela: cada vaga é medida, a câmera lê a placa e a cancela avisa quando falha. Três sistemas ciberfísicos (ESP32 + MicroPython no Wokwi) que só conversam por MQTT, mais um dashboard web.
+<p align="center">
+  <img src="https://img.shields.io/badge/ESP32-MicroPython-2B2728?logo=micropython&logoColor=white" alt="ESP32 MicroPython">
+  <img src="https://img.shields.io/badge/MQTT-HiveMQ-660066?logo=mqtt&logoColor=white" alt="MQTT HiveMQ">
+  <img src="https://img.shields.io/badge/simulação-Wokwi-0aa070" alt="Wokwi">
+  <img src="https://img.shields.io/badge/dashboard-HTML%20%2B%20MQTT.js-1f6feb" alt="Dashboard">
+  <img src="https://img.shields.io/badge/teste-64%20verificações%20ok-2ea44f" alt="Teste de integração">
+</p>
 
-Projeto final de Conectividade em Sistemas Ciberfísicos (PUCPR, 2026.2). Evolução do SmartPark de Fundamentos de Sistemas Ciberfísicos (2026.1), que está em [`Old/`](Old/); o que foi reaproveitado está em [`docs/reuso.md`](docs/reuso.md).
+<p align="center">
+  <b>Três sistemas ciberfísicos que só conversam por MQTT, mais um dashboard web.</b><br>
+  Cada vaga é medida, a câmera lê a placa e a cancela avisa quando falha.
+</p>
 
-- Equipe 3: Enzo Bossmann, Diego Feltrin e Gabriel Henrique
-- Identificador nos tópicos: `equipe03` (prefixo `cscf/equipe03`, constante `PREFIXO` em cada `main.py`)
-- Entrega: 09/11/2026, 10:00
+---
 
-## Links
+Projeto final de **Conectividade em Sistemas Ciberfísicos** (PUCPR, 2026.2). Evolução do SmartPark de Fundamentos de Sistemas Ciberfísicos (2026.1), que está em [`Old/`](Old/); o que foi reaproveitado está em [`docs/reuso.md`](docs/reuso.md).
 
-- Wokwi CPS1 Vagas: https://wokwi.com/projects/480003924044144641
-- Wokwi CPS2 Cancela: https://wokwi.com/projects/480004498194137089
-- Wokwi CPS3 Totem: https://wokwi.com/projects/480004853605879809
-- Vídeo da demonstração: https://youtu.be/EEVO-9NKvvE
+| | |
+|---|---|
+| **Equipe 3** | Enzo Bossmann, Diego Feltrin e Gabriel Henrique |
+| **Prefixo MQTT** | `cscf/equipe03` (constante `PREFIXO` em cada `main.py`) |
+| **Entrega** | 09/11/2026, 10:00 |
+
+## Vídeos
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://youtu.be/EEVO-9NKvvE"><img src="https://img.youtube.com/vi/EEVO-9NKvvE/maxresdefault.jpg" alt="Vídeo da demonstração"></a><br>
+      <b>Demonstração</b> (7 min)<br>os 3 Wokwi, o broker e o dashboard rodando
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/apresentacao/motion.mp4"><img src="docs/img/motion.png" alt="Apresentação animada"></a><br>
+      <b>Apresentação animada</b> (5 min)<br>arquitetura, as 9 integrações e o item 9
+    </td>
+  </tr>
+</table>
+
+## Simulações no Wokwi
+
+| Sistema | O que faz | Abrir |
+|---|---|---|
+| **CPS1 Vagas** | mede as 4 vagas e acende o LED de cada uma | [![Wokwi](https://img.shields.io/badge/abrir-Wokwi-0aa070)](https://wokwi.com/projects/480003924044144641) |
+| **CPS2 Cancela** | lê a placa, abre ou nega e dá os alarmes | [![Wokwi](https://img.shields.io/badge/abrir-Wokwi-0aa070)](https://wokwi.com/projects/480004498194137089) |
+| **CPS3 Totem** | mostra as vagas livres e atende o pedido de ajuda | [![Wokwi](https://img.shields.io/badge/abrir-Wokwi-0aa070)](https://wokwi.com/projects/480004853605879809) |
+
+## Dashboard
+
+![Dashboard](dashboard/screenshots/dashboard.png)
 
 ## Os três sistemas
 
@@ -24,7 +61,23 @@ Projeto final de Conectividade em Sistemas Ciberfísicos (PUCPR, 2026.2). Evolu�
 | [CPS3 Totem](cps3-totem/) | botão de ajuda, PIR | display 7 segmentos, LEDs, fita NeoPixel (1 LED por vaga) | ajuda, presença, estado | vagas e status do CPS1, alarmes e modo do CPS2, comandos |
 | [Dashboard](dashboard/) | – | – | comandos, câmera, pagamento | tudo (`cscf/equipe03/#`) |
 
-Integrações: vagas → totem (número, fita e LED); lotado → a cancela nega; ajuda no totem → bip na cancela; vagas ocupadas × entradas → alarme de evasão; vaga PcD ocupada sem carro PcD dentro → o totem pisca a vaga e o dashboard avisa; cancela travada → o totem pisca; pagamento pelo celular → a saída abre; emergência → tudo abre e pisca; CPS1 cai → o totem mostra `----` e a cancela para de negar por lotado. Detalhes em [`docs/topicos.md`](docs/topicos.md).
+## As 9 integrações
+
+| # | Quando | O que acontece |
+|---|---|---|
+| 1 | as vagas mudam | o totem atualiza o número, a fita e o LED |
+| 2 | lotou | a cancela nega a entrada |
+| 3 | há mais vagas ocupadas do que entradas | alarme de evasão |
+| 4 | a cancela trava aberta | o totem pisca |
+| 5 | o motorista paga pelo celular | a saída abre |
+| 6 | emergência | tudo abre e pisca |
+| 7 | alguém aperta ajuda no totem | a cancela dá um bip para o operador |
+| 8 | o CPS1 cai (Last Will) | o totem mostra `----` e a cancela para de negar por lotado |
+| 9 | vaga PcD ocupada sem carro PcD dentro | o totem pisca a vaga e o dashboard avisa |
+
+Detalhes em [`docs/topicos.md`](docs/topicos.md).
+
+## Arquitetura
 
 ![Arquitetura](docs/arquitetura.png)
 
